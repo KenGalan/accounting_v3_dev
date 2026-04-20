@@ -388,7 +388,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
         border-radius: 12px;
         /* box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); */
         font-family: "Inter", "Segoe UI", Roboto, sans-serif;
-         /* zoom: 90%; */
+        /* zoom: 90%; */
     }
 
     #deptTable {
@@ -738,7 +738,13 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                 pageLength: 5,
                 lengthChange: false,
                 order: [],
-
+                columnDefs: [{
+                    targets: 2, // 3rd column
+                    createdCell: function(td, cellData, rowData, row, col) {
+                        let val = $(td).find('input').val();
+                        $(td).attr('data-order', parseFloat(val) || 0);
+                    }
+                }]
             });
 
             $('#backBtn').on('click', function() {
@@ -970,7 +976,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     all_accounts_global.forEach(j => {
 
                         html_wip += `<option value="${j.id}" >${j.acc_fullname}</option>`;
-                    }); 
+                    });
 
                     html_wip += `</select>`;
 
@@ -1005,9 +1011,9 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                         dist_id: parts_dist_id,
                         is_enabled: 'true',
                         data: newRowData
-                    }); 
+                    });
                     $(`#deptSelect option[value="${value}"]`).remove();
-                } 
+                }
 
                 if (!newRows.length) return;
 
@@ -1023,7 +1029,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                         data: [
                             $row.find('td').eq(0).html(),
                             $row.find('td').eq(1).html(),
-                            `<input type="text" class="form-control distribution-input ${$row.hasClass('input-enabled') ? 'input-enabled' : ''}" style="width:100%;" value="${existingValue}" ${isDisabled ? 'disabled' : ''}>`,
+                            `<input type="text" class="form-control distribution-input ${$row.hasClass('input-enabled') ? 'input-enabled' : ''}" style="width:100%;" value="${existingValue}" ${isDisabled ? 'readonly' : ''}>`,
                             $row.find('td').eq(3).html(),
                             $row.find('td').eq(4).html(),
                             $row.find('td').eq(5).html(),
@@ -1038,7 +1044,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     ...currentData
                 ];
 
-                dt.deptDTable.rows().nodes().to$().find('.js-select2').each(function () {
+                dt.deptDTable.rows().nodes().to$().find('.js-select2').each(function() {
                     if ($(this).hasClass('select2-hidden-accessible')) {
                         $(this).select2('destroy');
                     }
@@ -1070,33 +1076,36 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                 //     // console.log(node)
                 //     if (rowObj.id) $(node).attr('data-id', rowObj.id);
                 //     if (rowObj.is_enabled) $(node).addClass('input-enabled'); 
-                    
+
                 //     $(node).prependTo(dt.deptDTable.table().body()); 
                 //     initSelect2(node); 
                 // }); 
 
-            updatedData.forEach((rowObj) => {
-                const rowApi = dt.deptDTable.row.add(rowObj.data);
-                const node = rowApi.node();
+                updatedData.forEach((rowObj) => {
+                    const rowApi = dt.deptDTable.row.add(rowObj.data);
+                    const node = rowApi.node();
 
-                if (rowObj.id) $(node).attr('data-id', rowObj.id);
-                if (rowObj.is_enabled) $(node).addClass('input-enabled');
-            });
+                    if (rowObj.id) $(node).attr('data-id', rowObj.id);
+                    if (rowObj.is_enabled) $(node).addClass('input-enabled');
+                });
 
-            dt.deptDTable.draw(false);
-            dt.deptDTable.page('first').draw('page');
+                dt.deptDTable.draw(false);
+                dt.deptDTable.page('first').draw('page');
 
-            dt.deptDTable.rows({ page: 'current' }).every(function () {
-                initSelect2(this.node());
-            });
+                dt.deptDTable.rows({
+                    page: 'current'
+                }).every(function() {
+                    initSelect2(this.node());
+                });
 
                 // dt.deptDTable.page('first').draw(false); 
                 $('#deptSelect').val([]).trigger('change.select2');
                 inputTextNumberAndPeriodOnly('.distribution-input');
+                dt.deptDTable.draw();
             });
 
-             function initSelect2(container) {
-                $(container).find('.js-select2').each(function () {
+            function initSelect2(container) {
+                $(container).find('.js-select2').each(function() {
                     if ($(this).hasClass('select2-hidden-accessible')) return;
 
                     $(this).select2({
@@ -1180,6 +1189,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                             wip_account: wip_account
                         });
                     }
+                    // dt.deptDTable.draw();
                 });
 
                 if (!rows.length) {
@@ -1653,7 +1663,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                 const node = dt.deptDTable.row.add([
                                     tagged_dept['dept_name'],
                                     tagged_dept['dept_code'],
-                                    `<input type="text" class="form-control distribution-input" value="${tagged_dept['distribution_percentage'] || 0}" style="width:100%;" disabled>`,
+                                    `<input type="text" class="form-control distribution-input" value="${tagged_dept['distribution_percentage'] || 0}" style="width:100%;" readonly>`,
                                     tagged_dept['dept_group'],
                                     html,
                                     html_wip,
@@ -1761,7 +1771,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     row.data('original-debit-to', inputAccount.val());
                     row.data('original-wip-account', inputWipAccount.val());
 
-                    input.prop('disabled', false).focus();
+                    input.prop('readonly', false).focus();
                     inputAccount.prop('disabled', false);
                     inputWipAccount.prop('disabled', false);
                     $(this).attr('data-button', 'Save').removeClass('btn-primary').addClass('btn-success')
@@ -1824,7 +1834,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                             showConfirmButton: false
                                         });
 
-                                        input.prop('disabled', true);
+                                        input.prop('readonly', true);
                                         cancelBtn.hide();
 
                                         row.find('.edit-distribution')
@@ -1868,7 +1878,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                 const originalDebitTo = row.data('original-debit-to');
                 const originalWipAccount = row.data('original-wip-account');
 
-                input.val(originalValue).prop('disabled', true);
+                input.val(originalValue).prop('readonly', true);
                 inputAccount.val(originalDebitTo).prop('disabled', true);
                 inputWipAccount.val(originalWipAccount).prop('disabled', true);
                 // $('#saveDistributionBtn').show();

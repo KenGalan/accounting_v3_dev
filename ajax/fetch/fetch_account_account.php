@@ -7,12 +7,12 @@ $conn = $db->getConnection();
 if (!$conn) {
     echo json_encode([]);
     exit;
-} 
+}
 
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
 $sql = "
-    SELECT A.id, A.name AS account_name
+    SELECT A.id, A.CODE || ' ' || A.name AS account_name
     FROM account_account A
     WHERE NOT EXISTS (
         SELECT 1

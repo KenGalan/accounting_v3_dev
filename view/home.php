@@ -1,3 +1,3 @@
 <script>
-  window.location = 'http://testapps.teamglac.com/accounting_v3/journal_entries.php'
+  window.location = 'http://10.0.2.129/accounting_v3_dev/journal_entries.php';
 </script>

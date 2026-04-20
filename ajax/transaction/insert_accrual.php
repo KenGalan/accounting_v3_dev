@@ -22,12 +22,24 @@ try {
 
     foreach ($acc_data as $row) {
 
-        $insertData = [
-            'DATE_RANGE_ID' => $month_id,
-            'CREDIT_TO' => $row['credit_account'],
-            'TOTAL_ACCRUAL_VALUE' => $row['accrual_value'],
-            'DIST_CATEG_ID' => intval($row['dist_template']),
-        ];
+        if ($row['from_date']) {
+            $insertData = [
+                'DATE_RANGE_ID' => $month_id,
+                'CREDIT_TO' => $row['credit_account'],
+                'TOTAL_ACCRUAL_VALUE' => $row['accrual_value'],
+                'DIST_CATEG_ID' => intval($row['dist_template']),
+                'FROM_DATE' => $row['from_date'],
+                'TO_DATE' => $row['to_date']
+            ];
+        } else {
+            $insertData = [
+                'DATE_RANGE_ID' => $month_id,
+                'CREDIT_TO' => $row['credit_account'],
+                'TOTAL_ACCRUAL_VALUE' => $row['accrual_value'],
+                'DIST_CATEG_ID' => intval($row['dist_template'])
+            ];
+        }
+
 
         $db_ken->insert('M_ACC_ACCRUAL', $insertData);
     }

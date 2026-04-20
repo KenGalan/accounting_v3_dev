@@ -56,6 +56,8 @@ JOIN
 ) A ON TO_CHAR(A.MIN_DATE,'YYYY-MM') = ADR.YEAR_MONTH
 )
 SELECT
+ma.from_date,
+ma.to_date,
     ma.id,
     acdr.is_dept_distributed,
     aa.code || ' ' || aa.name AS credit_to,
@@ -77,6 +79,8 @@ left join account_move am on am.id = ma.actual_apv_id
 WHERE ma.active
 --and ma.distributed_account_move_id is not null
 GROUP BY
+ma.from_date,
+ma.to_date,
     ma.id,
     mct.id,
     aa.id,

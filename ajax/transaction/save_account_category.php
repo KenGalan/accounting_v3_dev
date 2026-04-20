@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // echo $check_query;
         // exit;
 
-        if ($row['m_acc_category_id'] !== null) {
+        if ($row['acc_category_id'] !== null) {
             $skipped_accounts[] = $row['account_name'];
             continue;
         }

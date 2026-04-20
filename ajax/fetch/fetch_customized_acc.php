@@ -8,7 +8,7 @@ $conn = $db->getConnection();
 $sql = "
  SELECT 
         B.ID,
-        A.NAME AS ACCOUNT,
+        A.CODE || ' ' || A.NAME AS ACCOUNT,
         TO_CHAR(B.ADDED_ON,
         'YYYY-MM-DD'
         ) AS ADDED_ON,
