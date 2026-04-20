@@ -1,0 +1,218 @@
+-- Table: public.m_acc_categ_update_hist
+
+-- DROP TABLE IF EXISTS public.m_acc_categ_update_hist;
+
+CREATE TABLE IF NOT EXISTS public.m_acc_categ_update_hist
+(
+    id integer NOT NULL DEFAULT nextval('m_acc_categ_update_hist_id_seq'::regclass),
+    account_id integer,
+    updated_on timestamp without time zone DEFAULT timezone('UTC'::text, now()),
+    updated_by integer,
+    column_updated character varying COLLATE pg_catalog."default",
+    old_value character varying COLLATE pg_catalog."default",
+    new_value character varying COLLATE pg_catalog."default",
+    CONSTRAINT m_acc_categ_update_hist_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.m_acc_categ_update_hist
+    OWNER to odoo;
+
+
+
+    -- Table: public.m_acc_category_tbl
+
+-- DROP TABLE IF EXISTS public.m_acc_category_tbl;
+
+CREATE TABLE IF NOT EXISTS public.m_acc_category_tbl
+(
+    id bigint NOT NULL DEFAULT nextval('m_acc_category_tbl_id_seq'::regclass),
+    acc_category character varying(255) COLLATE pg_catalog."default",
+    added_on timestamp without time zone DEFAULT timezone('UTC'::text, now()),
+    added_by character varying(255) COLLATE pg_catalog."default",
+    changed_on time without time zone,
+    changed_by character varying(255) COLLATE pg_catalog."default",
+    active boolean,
+    CONSTRAINT m_acc_category_tbl_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.m_acc_category_tbl
+    OWNER to odoo;
+
+    -- Table: public.m_acc_cost_distribution
+
+-- DROP TABLE IF EXISTS public.m_acc_cost_distribution;
+
+CREATE TABLE IF NOT EXISTS public.m_acc_cost_distribution
+(
+    id integer NOT NULL DEFAULT nextval('m_acc_cost_distribution_id_seq'::regclass),
+    distribution_percentage numeric NOT NULL,
+    m_acc_category_id integer NOT NULL,
+    added_on timestamp without time zone DEFAULT timezone('UTC'::text, now()),
+    added_by integer,
+    changed_on timestamp without time zone,
+    changed_by integer,
+    active boolean DEFAULT true,
+    analytic_account_id integer NOT NULL,
+    CONSTRAINT m_acc_cost_distribution_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.m_acc_cost_distribution
+    OWNER to odoo;
+
+
+
+    -- Table: public.m_acc_date_range
+
+-- DROP TABLE IF EXISTS public.m_acc_date_range;
+
+CREATE TABLE IF NOT EXISTS public.m_acc_date_range
+(
+    id integer NOT NULL DEFAULT nextval('m_acc_date_range_id_seq'::regclass),
+    year_month character varying COLLATE pg_catalog."default",
+    start_date date,
+    end_date date,
+    added_on timestamp without time zone DEFAULT timezone('UTC'::text, now()),
+    added_by integer,
+    changed_on timestamp without time zone,
+    change_by integer,
+    active boolean,
+    is_dept_distributed boolean DEFAULT false,
+    CONSTRAINT m_acc_date_range_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.m_acc_date_range
+    OWNER to odoo;
+
+
+    -- Table: public.m_acc_department_groups
+
+-- DROP TABLE IF EXISTS public.m_acc_department_groups;
+
+CREATE TABLE IF NOT EXISTS public.m_acc_department_groups
+(
+    id integer NOT NULL DEFAULT nextval('m_acc_department_groups_id_seq'::regclass),
+    dept_group character varying COLLATE pg_catalog."default" NOT NULL,
+    added_on timestamp without time zone NOT NULL DEFAULT timezone('UTC'::text, now()),
+    added_by integer,
+    changed_on timestamp without time zone,
+    changed_by integer,
+    active boolean DEFAULT true,
+    CONSTRAINT m_acc_department_groups_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.m_acc_department_groups
+    OWNER to odoo;
+
+
+
+    -- Table: public.m_acc_dist_batch
+
+-- DROP TABLE IF EXISTS public.m_acc_dist_batch;
+
+CREATE TABLE IF NOT EXISTS public.m_acc_dist_batch
+(
+    id integer NOT NULL DEFAULT nextval('m_acc_dist_batch_id_seq'::regclass),
+    year_month character varying COLLATE pg_catalog."default",
+    start_date timestamp without time zone,
+    end_date timestamp without time zone,
+    added_on timestamp without time zone DEFAULT timezone('UTC'::text, now()),
+    added_by integer,
+    active boolean DEFAULT true,
+    CONSTRAINT m_acc_dist_batch_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.m_acc_dist_batch
+    OWNER to odoo;
+
+
+
+
+    -- Table: public.m_acc_dist_journal_entries
+
+-- DROP TABLE IF EXISTS public.m_acc_dist_journal_entries;
+
+CREATE TABLE IF NOT EXISTS public.m_acc_dist_journal_entries
+(
+    id integer NOT NULL DEFAULT nextval('m_acc_dist_journal_entries_id_seq'::regclass),
+    batch_id integer NOT NULL,
+    account_move_name character varying COLLATE pg_catalog."default",
+    account_move_id integer,
+    reference character varying COLLATE pg_catalog."default",
+    journal character varying COLLATE pg_catalog."default",
+    journal_id integer,
+    added_on timestamp without time zone DEFAULT timezone('UTC'::text, now()),
+    added_by integer,
+    active boolean DEFAULT true,
+    account_move_date date,
+    CONSTRAINT m_acc_dist_journal_entries_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.m_acc_dist_journal_entries
+    OWNER to odoo;
+
+
+
+    -- Table: public.m_acc_dist_journal_items
+
+-- DROP TABLE IF EXISTS public.m_acc_dist_journal_items;
+
+CREATE TABLE IF NOT EXISTS public.m_acc_dist_journal_items
+(
+    id integer NOT NULL DEFAULT nextval('m_acc_dist_journal_items_id_seq'::regclass),
+    account_code character varying COLLATE pg_catalog."default",
+    account_id integer,
+    item_label character varying COLLATE pg_catalog."default",
+    analytic_account character varying COLLATE pg_catalog."default",
+    analytic_account_id integer,
+    distribution_percentage numeric,
+    credit numeric,
+    debit numeric,
+    added_on timestamp without time zone DEFAULT timezone('UTC'::text, now()),
+    added_by integer,
+    active boolean DEFAULT true,
+    main_id integer,
+    CONSTRAINT m_acc_dist_journal_items_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.m_acc_dist_journal_items
+    OWNER to odoo;
+
+
+
+
+    -- Table: public.m_account_account_m_acc_category_id_update_hist
+
+-- DROP TABLE IF EXISTS public.m_account_account_m_acc_category_id_update_hist;
+
+CREATE TABLE IF NOT EXISTS public.m_account_account_m_acc_category_id_update_hist
+(
+    id integer NOT NULL DEFAULT nextval('m_account_account_m_acc_category_id_update_hist_id_seq'::regclass),
+    account_id integer NOT NULL,
+    column_updated character varying COLLATE pg_catalog."default",
+    old_value character varying COLLATE pg_catalog."default",
+    new_value character varying COLLATE pg_catalog."default",
+    updated_on timestamp without time zone DEFAULT timezone('UTC'::text, now()),
+    updated_by character varying COLLATE pg_catalog."default",
+    CONSTRAINT m_account_account_m_acc_category_id_update_hist_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.m_account_account_m_acc_category_id_update_hist
+    OWNER to odoo;
