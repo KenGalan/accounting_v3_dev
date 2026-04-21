@@ -25,17 +25,6 @@ $query_category = "
 ";
 $result_category = pg_query($conn, $query_category);
 
-// $query_all_accounts = "
-// SELECT DISTINCT
-//     aa.id,
-//     aa.code || ' ' || aa.name AS account_name
-// FROM account_account aa
-// LEFT JOIN M_ACC_COST_DISTRIBUTION mm 
-//     ON mm.analytic_account_id = aa.id
-// WHERE mm.analytic_account_id IS NULL
-//   AND aa.m_acc_category_id IS NULL
-// ORDER BY account_name ASC
-// ";
 
 $query_all_accounts = "SELECT DISTINCT
     aa.id,
@@ -48,69 +37,6 @@ ORDER BY account_name ASC"; //bagong update
 
 $result_all_accounts = pg_query($conn, $query_all_accounts);
 
-// $query_accounts = "
-// SELECT DISTINCT 
-//     aa.id, 
-//     aa.name AS account_name 
-// FROM account_account aa
-// JOIN M_ACC_CATEGORY_TBL cat ON aa.m_acc_category_id = cat.id
-// JOIN M_ACC_COST_DISTRIBUTION mm ON cat.id = mm.m_acc_category_id
-// WHERE cat.id = 1
-// ORDER BY account_name ASC
-// "; 
-// $result_accounts = pg_query($conn, $query_accounts);
-
-// $query_departments = "
-//     SELECT AAA.id, 
-//     CASE
-//         WHEN AAA.NAME ~ '^[0-9]' THEN regexp_replace(AAA.NAME, '^\S+\s*', '')
-//         ELSE AAA.NAME
-//     END AS dept_name,
-//     CASE
-//         WHEN AAA.NAME ~ '^[0-9]' THEN split_part(AAA.NAME, ' ', 1)
-//         ELSE ''
-//     END AS dept_code,
-//     ADG.DEPT_GROUP,
-//     AAA.CREATE_DATE AS added_on,
-//     '' AS added_by,
-//     '' AS changed_on,
-//     '' AS changed_by,
-//     AAA.active,
-//     ACD.distribution_percentage
-//     FROM ACCOUNT_ANALYTIC_ACCOUNT AAA
-//     LEFT JOIN M_ACC_DEPARTMENT_GROUPS ADG ON ADG.ID = AAA.M_ACC_GROUP_ID
-//     JOIN M_ACC_COST_DISTRIBUTION ACD ON AAA.ID = ACD.ANALYTIC_ACCOUNT_ID
-//     JOIN M_ACC_CATEGORY_TBL ACT ON ACD.M_ACC_CATEGORY_ID = ACT.ID
-//     WHERE AAA.ACTIVE
-//     ORDER BY AAA.id ASC
-// ";
-// $result_departments = pg_query($conn, $query_departments); 
-
-// $query_all_departments = "
-// 	    SELECT DISTINCT AAA.id, 
-//     CASE
-//         WHEN AAA.NAME ~ '^[0-9]' THEN regexp_replace(AAA.NAME, '^\S+\s*', '')
-//          ELSE AAA.NAME
-//     END AS dept_name,
-//      CASE
-//          WHEN AAA.NAME ~ '^[0-9]' THEN split_part(AAA.NAME, ' ', 1)
-//          ELSE ''
-//      END AS dept_code,
-//    ADG.DEPT_GROUP,
-//      AAA.CREATE_DATE AS added_on,
-//     '' AS added_by,
-//    '' AS changed_on,
-//     '' AS changed_by,
-//     AAA.active
-//    -- ACD.distribution_percentage
-//      FROM ACCOUNT_ANALYTIC_ACCOUNT AAA
-//      JOIN M_ACC_DEPARTMENT_GROUPS ADG ON ADG.ID = AAA.M_ACC_GROUP_ID
-//      JOIN M_ACC_COST_DISTRIBUTION ACD ON AAA.ID = ACD.ANALYTIC_ACCOUNT_ID
-//      -- JOIN M_ACC_CATEGORY_TBL ACT ON ACD.M_ACC_CATEGORY_ID = ACT.ID
-//      WHERE AAA.ACTIVE
-//     ORDER BY AAA.id ASC
-//  ";
-// $result_all_departments = pg_query($conn, $query_all_departments); 
 ?>
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -470,12 +396,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 </style>
 
 <body>
-    <!-- <button class="btn-primary" id="addCategoryBtn">+ Add Category</button>
-    <div id="addCategoryContainer" class="hidden" style="margin-top:15px;">
-        <input type="text" id="newCategoryInput" placeholder="Enter new category name" style="padding:6px; width:250px; border:1px solid #ccc; border-radius:4px;">
-        <button class="btn-success" id="saveCategoryBtn">Save</button>
-        <button class="btn-secondary" id="cancelCategoryBtn">Cancel</button>
-    </div> -->
+
 
     <div id="categoryContainer">
         <div class="instruct" style="margin-top: 15px; margin-bottom: 15px;">
@@ -531,7 +452,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                 <span id="statusRibbonText" style="font-size: 11pt; color: #000; display: block; margin-top: 5px;"></span>
             </div>
         </div>
-        <!-- <h3></h3>  -->
 
         <div id="accountTypeTable_wrapper_container">
             <button id="addAccountBtn" style="background-color: #7C7BAD; margin-top: 20px;">+ Add Account</button>
@@ -897,7 +817,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
                         data.forEach(dept => {
                             $('#deptSelect').append(`
-                            <option value="${dept.id}+${dept.dept_name}+${dept.dept_group}+${dept.dept_code}+${dept.debit_to}+${dept.dist_id}+${dept.wip_account}">
+                            <option value="${dept.id}+${dept.dept_name}+${dept.dept_group}+${dept.dept_code}+${dept.debit_to}+${dept.dist_id}+${dept.wip_account}+${dept.is_group}">
                                 ${dept.dept_name} ${dept.dept_code ? '(' + dept.dept_code + ')' : ''}
                             </option>
 
@@ -915,7 +835,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
                     dataType: 'json',
                     success: function(data) {
-                        // console.log('Available departments:', data);
 
                         if (data.error) {
                             alert('Error: ' + data.error);
@@ -955,6 +874,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     const parts_debit_to = parts[4];
                     const parts_dist_id = parts[5];
                     const parts_wip_account = parts[6];
+                    const parts_is_group = parts[7];
 
                     html = '';
                     html += '<select class="accountSelect js-select2">';
@@ -976,6 +896,8 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     all_accounts_global.forEach(j => {
 
                         html_wip += `<option value="${j.id}" >${j.acc_fullname}</option>`;
+
+
                     });
 
                     html_wip += `</select>`;
@@ -984,8 +906,8 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                         html_wip = '';
                     }
 
+
                     if (!parts_dept_group || parts_dept_group.toLowerCase() === 'null' || parts_dept_group.toLowerCase() === 'undefined') {
-                        // swal(`Department "${pasrts_dept_name}" does not have a group assigned. Please assign a group first.`);
                         swal({
                             type: "warning",
                             title: "No Department Group",
@@ -1003,13 +925,14 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                         html,
                         html_wip,
                         '',
-                        `<button class="delete-dept btn-danger" data-id="${parts_dept_id}">REMOVE</button>`
+                        `<button class="delete-dept btn-danger" data-id="${parts_dept_id}" data-is-group="${parts_is_group}">REMOVE</button>`
                     ];
 
                     newRows.push({
                         id: parts_dept_id,
                         dist_id: parts_dist_id,
                         is_enabled: 'true',
+                        is_group: parts_is_group,
                         data: newRowData
                     });
                     $(`#deptSelect option[value="${value}"]`).remove();
@@ -1052,40 +975,12 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
                 dt.deptDTable.clear();
 
-                // updatedData.forEach((rowObj) => {
-                //     const node = dt.deptDTable.row.add(rowObj.data).draw(false).node();
-                //     if (rowObj.id) $(node).attr('data-id', rowObj.id);
-                //     if (rowObj.is_enabled) $(node).addClass('input-enabled');
-                // });
-                // newRows.forEach((rowObj) => {
-                //     const node = dt.deptDTable
-                //         .row.add(rowObj.data)
-                //         .draw(false)
-                //         .node();
-
-                //     if (rowObj.id) $(node).attr('data-id', rowObj.id);
-                //     if (rowObj.is_enabled) $(node).addClass('input-enabled');
-                // });
-
-                // newRows.forEach((rowObj) => {
-                //     const rowApi = dt.deptDTable.row.add(rowObj.data);
-                //     rowApi.draw(false);
-                //     // console.log(rowApi)
-
-                //     const node = rowApi.node(); 
-                //     // console.log(node)
-                //     if (rowObj.id) $(node).attr('data-id', rowObj.id);
-                //     if (rowObj.is_enabled) $(node).addClass('input-enabled'); 
-
-                //     $(node).prependTo(dt.deptDTable.table().body()); 
-                //     initSelect2(node); 
-                // }); 
-
                 updatedData.forEach((rowObj) => {
                     const rowApi = dt.deptDTable.row.add(rowObj.data);
                     const node = rowApi.node();
 
                     if (rowObj.id) $(node).attr('data-id', rowObj.id);
+                    if (rowObj.is_group) $(node).attr('data-is-group', rowObj.is_group);
                     if (rowObj.is_enabled) $(node).addClass('input-enabled');
                 });
 
@@ -1098,7 +993,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     initSelect2(this.node());
                 });
 
-                // dt.deptDTable.page('first').draw(false); 
                 $('#deptSelect').val([]).trigger('change.select2');
                 inputTextNumberAndPeriodOnly('.distribution-input');
                 dt.deptDTable.draw();
@@ -1110,7 +1004,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
                     $(this).select2({
                         width: '100%',
-                        // dropdownParent: $('#yourModalId') 
                     });
                 });
             }
@@ -1166,30 +1059,27 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
                 let rows = [];
                 dt.deptDTable.rows('.input-enabled').every(function() {
-                    // console.log(this.data());
-                    // });
-                    // dt.deptDTable.rows().every(function() {
 
                     const rowNode = this.node();
-                    const analytic_account_id = $(rowNode).data('id');
+                    const analytic_account_id = $(rowNode).data('is-group') == 't' ? null : $(rowNode).data('id');
+                    const group_id = $(rowNode).data('is-group') == 't' ? $(rowNode).data('id') : null;
                     const val = $(rowNode).find('.distribution-input').val();
                     const valAccount = $(rowNode).find('.accountSelect').val();
                     const valWipAccount = $(rowNode).find('.wipAccountSelect').val();
-                    // const inputAccount = row.find('.accountSelect');
                     const distribution_percentage = val;
                     const debit_to = Number(valAccount);
                     const wip_account = Number(valWipAccount);
 
 
-                    if (analytic_account_id && val !== "" && distribution_percentage > 0) {
+                    if ((analytic_account_id || group_id) && val !== "" && distribution_percentage > 0) {
                         rows.push({
                             analytic_account_id: analytic_account_id,
+                            group_id: group_id,
                             distribution_percentage: distribution_percentage,
                             debit_to: debit_to,
                             wip_account: wip_account
                         });
                     }
-                    // dt.deptDTable.draw();
                 });
 
                 if (!rows.length) {
@@ -1359,11 +1249,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                     <button class="remove-distribution btn btn-sm btn-danger"><i class="fa fa-trash"></i></button>
                                     `
                                 ]).draw(false).node();
-
-                                // $(node).attr('data-dist-id', tagged_dept['dist-id']);
-                                // $(node).attr('data-id', tagged_dept['analytic_account_id']);
-                                // $(node).data('original-value', tagged_dept['distribution_percentage'] || 0);
-                                // $(node).data('original-debit-to', tagged_dept['debit_to'] || 0);
 
 
                                 $(node).attr('data-id', tagged_dept['analytic_account_id']);
@@ -1561,13 +1446,8 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     url: 'ajax/fetch/fetch_tagged_accounts.php',
 
                     success: function(data) {
-                        // console.log(data)
                         if (data) {
                             accounts_tagged_global = data
-                            // console.log(data);
-
-                            // console.log('niceone')
-
                             for (var i = 0; i < data.length; i++) {
                                 let tagged_accounts = data[i];
                                 dt.taggedAccTbl.row.add([
@@ -1575,12 +1455,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                     tagged_accounts['code'],
                                     '',
                                     `<button class="remove-accBtn btn-sm btn-danger" style="float: right !important"  data-id="${tagged_accounts['id']}"><i class="fa fa-trash"></i></button>`
-                                    // tagged_accounts['device'],
-                                    // tagged_accounts['category'],
-                                    // tagged_accounts['customer_name'],
-                                    // tagged_accounts['quantity_done'],
-                                    // tagged_accounts['earned_hrs'],
-                                    // tagged_accounts['allocation']
                                 ]).draw(false).node();
 
                             }
@@ -1588,7 +1462,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                             $('#addCategoryBtn').hide();
                             $('#addCategoryContainer').hide();
 
-                            // $('#moTable_tbody').html(moTableTbody);
 
 
                         }
@@ -1650,7 +1523,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                 html_wip = '';
                                 html_wip += '<select class="wipAccountSelect js-select2" disabled>';
                                 html_wip += `<option value="">Select Account</option>`;
-                                // console.log(all_accounts_global)
                                 all_accounts_global.forEach(j => {
                                     html_wip += `<option value="${j.id}" ${tagged_dept['wip_account'] == j.id ? 'selected' : ''}>${j.acc_fullname}</option>`;
                                 });
@@ -1680,7 +1552,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                 $(node).data('original-debit-to', tagged_dept['debit_to'] || 0);
                                 $(node).data('original-wip-account', tagged_dept['wip_account'] || 0);
                             }
-                            // setSelect2();
                             updateTotalDistribution();
                             toggleDistributionButton();
                         } else {

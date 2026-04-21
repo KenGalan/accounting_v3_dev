@@ -11,155 +11,25 @@ if (!isset($_SESSION['ppc']['emp_no'])) : $user = 0;
     exit;
 endif; //NOT ISSET SESSION
 
-$month_row = $db_ken->fetchRow("
-    SELECT id
-    FROM M_ACC_DATE_RANGE
-    WHERE id = $month_id
-    AND is_dept_distributed = TRUE
-");
 
-if ($month_row) {
-    echo json_encode([
-        'status' => 'distributed',
-        'message' => 'This month has already been distributed'
-    ]);
-    exit;
-}
 
-$select_month = $db->fetchRow("SELECT to_char(start_date,'YYYY-MM-DD') start_date, to_char(end_date, 'YYYY-MM-DD') end_date, TO_CHAR(to_date(to_char(start_date ,'YYYY-MM'),'YYYY-MM') + INTERVAL '1 month - 1 day', 'MM/DD/YYYY') LAST_DATE_OF_MONTH FROM M_ACC_DATE_RANGE WHERE ID =$month_id");
+$selectDateRange =
+    $db_ken->fetchAll("SELECT 
+DISTINCT
+to_char(FROM_DATE,'YYYY-MM-DD') start_date, 
+to_char(TO_DATE, 'YYYY-MM-DD') end_date
+, TO_CHAR(to_date(to_char(FROM_DATE ,'YYYY-MM'),'YYYY-MM') + INTERVAL '1 month - 1 day', 'MM/DD/YYYY') LAST_DATE_OF_MONTH
+FROM M_ACC_ACCRUAL WHERE ACTIVE");
 
-if ($select_month) {
-    $from_date = $select_month['start_date'];
-    $to_date = $select_month['end_date'];
-    // echo select_month;
-    // exit; 
+if ($selectDateRange) {
+    foreach ($selectDateRange as $date_range) {
+        $from_date = $date_range['start_date'];
+        $to_date = $date_range['end_date'];
+        $last_date_of_month = $date_range['last_date_of_month'];
 
-    $date = new DateTime($from_date);
 
-    // First day of the month
-    $firstDay = $date->format('Y-m-01');
-
-    // Last day of the month
-    $lastDay = $date->format('Y-m-t');
-
-    $last_date_of_month = $select_month['last_date_of_month'];
-    $monthYear = substr($from_date, 0, 7);
-
-    //     $qmos = "with mo_with_trx AS (
-    //         SELECT DISTINCT mp.name, mp.id AS mo_id
-    //         FROM mrp_production mp
-    //         JOIN (
-    //             SELECT MAX(ID) OVER (PARTITION BY production_id) AS max_wo, *
-    //             FROM mrp_workorder
-    //             WHERE date_finished + INTERVAL '8 hours' BETWEEN 
-    //                 TO_TIMESTAMP('$from_date','YYYY-MM-DD') + INTERVAL '6 hours'
-    //                 AND TO_TIMESTAMP('$to_date','YYYY-MM-DD') + INTERVAL '1 day 5 hours 59 minutes'
-    //                 and state !='cancel'
-    //         ) mw ON mw.production_id = mp.id
-    //     ),
-    //     all_mos AS (
-    //         SELECT 
-    //             mp.id AS mo_id, 
-    //             mp.name AS mo,  
-    //             TO_CHAR(mp.create_date + INTERVAL '8 hours', 'YYYY-MM-DD') AS date_load,
-    //             am.name AS inv_no,
-    //             spb.name AS batch_no, 
-    //             spb.state AS voucher_status, 
-    //             am.invoice_date,
-    //             mp.state AS mo_status,
-    //             CASE-- WHEN am.invoice_date <= TO_DATE('$last_date_of_month','MM/DD/YYYY')
-    //                -- THEN 'INVOICED BEFORE MONTH END' 
-    // 		--when am.name IS NOT NULL then 'INVOICED'
-    //         when am.name IS NOT NULL and am.invoice_date <= TO_DATE('$last_date_of_month','MM/DD/YYYY')  then 'INVOICED'
-    // 		ELSE '' END AS status
-    //         FROM mrp_production mp
-    //         LEFT JOIN (
-    //             SELECT * 
-    //             FROM mrp_production_stock_picking_rel A
-    //             JOIN stock_picking B ON B.id = A.stock_picking_id 
-    //             WHERE B.name LIKE 'WH/OUT/%' AND batch_id IS NOT NULL
-    //         ) sp ON sp.mrp_production_id = mp.id
-    //         LEFT JOIN stock_picking_batch spb ON spb.id = sp.batch_id
-    //         LEFT JOIN account_move_stock_picking_batch_rel amspb ON amspb.stock_picking_batch_id = spb.id
-    //         LEFT JOIN account_move am ON am.id = amspb.account_move_id
-    //         JOIN mo_with_trx mwt ON mwt.mo_id = mp.id
-    //     ),
-    //     filtered_mo AS (
-    //         SELECT DISTINCT 
-    //             mo,
-    //             mo_id,
-    //             mo_status,
-    //             MAX(status) OVER (PARTITION BY mo_id) AS status
-    //         FROM all_mos
-    //     ),
-    //     set_status AS (
-    //         SELECT
-    //             fm.mo,
-    //         fm.mo_id,
-    //             pt.name AS device,
-    //             pt.id as device_id,
-    //             pc.name AS category,
-    //             mp.lot_no,
-    //             mp.customer_name,
-    //             SUM(mrw.time_cycle_manual) AS total_labor,
-    //             '' AS total_multiplied_in_quantity_done,
-    //             '' AS earned_hrs,
-    //             fm.mo_status,
-    //             CASE WHEN SUM(mrw.time_cycle_manual) IS NULL 
-    //                 THEN 'NO TRANSACTION BETWEEN THE MONTHEND RANGE' 
-    //                 ELSE fm.status END AS status,
-    //             max_wo,
-    //             CASE WHEN PC.NAME LIKE 'DIE%' THEN
-    //         CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
-    //         ELSE
-    //         TRIM(SPLIT_PART(PC.NAME, ' ', 1))
-    //         END AS SBU
-    //         FROM filtered_mo fm
-    //         JOIN mrp_production mp ON mp.id = fm.mo_id
-    //         JOIN product_product pp ON pp.id = mp.product_id
-    //         JOIN product_template pt ON pt.id = pp.product_tmpl_id
-    //         JOIN product_category pc ON pc.id = pt.categ_id
-    //         LEFT JOIN (
-    //             SELECT MAX(ID) OVER (PARTITION BY production_id) AS max_wo, *
-    //             FROM mrp_workorder
-    //             WHERE date_finished + INTERVAL '8 hours' BETWEEN 
-    //                 TO_TIMESTAMP('$from_date', 'YYYY-MM-DD') + INTERVAL '6 hours' 
-    //                 AND TO_TIMESTAMP('$to_date', 'YYYY-MM-DD') + INTERVAL '1 day 5 hours 59 minutes'
-    //                 and state = 'done'
-    //         ) mw ON mw.production_id = fm.mo_id
-    //         LEFT JOIN mrp_routing_workcenter mrw ON mw.operation_id = mrw.id
-    //         WHERE 
-    //        -- fm.status != 'INVOICED BEFORE MONTH END' AND 
-    //         fm.mo_status NOT IN ('cancel','draft','planned') 
-    //         GROUP BY fm.mo, pt.name, pc.name, mp.lot_no, mp.customer_name, fm.mo_status, fm.status, max_wo,fm.mo_id,pt.id,
-    //         CASE WHEN PC.NAME LIKE 'DIE%' THEN
-    //         CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
-    //         ELSE
-    //         TRIM(SPLIT_PART(PC.NAME, ' ', 1))
-    //       END
-    //     )
-    //     --, mo_percentage  as (
-    //    SELECT
-    //         a.mo,
-    //         a.mo_id,
-    //         a.device,
-    //         a.device_id,
-    //         a.sbu,
-    //         a.category,
-    //         a.lot_no,
-    //         a.customer_name,
-    //         coalesce(mw.done_qty,0) AS quantity_done,
-    //         coalesce(a.total_labor,0) total_labor,
-    //         (mw.done_qty * a.total_labor) AS total_multiplied_in_quantity_done,
-    //         round(coalesce((mw.done_qty * a.total_labor) / 3600,0),5) AS earned_hrs,
-    //         (round(mw.done_qty,5)/ (SUM(round(coalesce(mw.done_Qty,0),5)) OVER (PARTITION BY A.SBU))) qty_percentage_per_mo,
-    //         (round(coalesce((mw.done_qty * a.total_labor) / 3600,0),5) / NULLIF(SUM(round(coalesce((mw.done_qty * a.total_labor) / 3600,0),5)) OVER (partition by a.sbu), 0)) eh_percentage_per_mo,
-    //       a.mo_status,
-    //       CASE WHEN a.status ='INVOICED' THEN 'true' else 'false' end inv_status
-    //     FROM set_status a
-    //     LEFT JOIN mrp_workorder mw ON mw.id = a.max_wo order by eh_percentage_per_mo";
-    $qmos = "	with mos as (SELECT DISTINCT MO FROM M_ACC_DIST_MO WHERE DATE_RANGE_ID !=$month_id AND NOT IS_INVOICED),
-    mo_with_trx AS (
+        $qmos = "	--with mos as (SELECT DISTINCT MO FROM M_ACC_MO_WIP WHERE FROM_DATE = TO_dATE('$from_date','YYYY-MM-DD')  AND TO_DATE = TO_dATE('$to_date','YYYY-MM-DD') AND NOT IS_INVOICED),
+       WITH  mo_with_trx AS (
            SELECT DISTINCT mp.name, mp.id AS mo_id
            FROM mrp_production mp
            JOIN (
@@ -297,125 +167,131 @@ if ($select_month) {
 '' REMARKS
    FROM set_status a
    LEFT JOIN mrp_workorder mw ON mw.id = a.max_wo --order by eh_percentage_per_mo
-   UNION ALL
-   select
-mp.name mo,
-mp.id mo_id,
-pt.name device,
-pt.id device_id,
-    CASE WHEN PC.NAME LIKE 'DIE%' THEN
-       CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
-       ELSE
-       TRIM(SPLIT_PART(PC.NAME, ' ', 1))
-       END AS SBU,
-pc.name category,
-mp.LOT_NO LOT_NUMBER,
-mp.customer_name,
-sml2.qtY_done quantity_done,
-null::numeric total_labor,
-null::numeric total_multiplied_in_quantity_done,
-null::numeric earned_hrs,
-null::numeric qty_percentage_per_mo,
-null::numeric eh_percentage_per_mo,
-mp.state mo_status,
-true inv_status,
-sum(sml.qty_done) invoiced_qty,
-sml2.qtY_done mo_done_qty,
-'INVOICED BUT NO MOVEMENT' REMARKS
-from
-mrp_production mp
-JOIN PRODUCT_PRODUCT PP ON PP.ID = MP.PRODUCT_ID
-JOIN PRODUCT_TEMPLATE PT ON PT.ID = PP.PRODUCT_TMPL_ID
-JOIN PRODUCT_CATEGORY PC ON PC.ID =PT.CATEG_ID
-left join mrp_production_stock_picking_rel mpsp on mpsp.mrp_production_id = mp.id
-left join stock_picking sp on sp.id = mpsp.stock_picking_id
-left join stock_picking_batch spb on spb.id = sp.batch_id
-join stock_move_line sml on sml.picking_id = sp.id  and mp.id = sml.manufacturing_order
-left JOIN (select * from stock_move_line where location_dest_id =8) sml2 on sml2.reference = mp.name
-left join account_move_stock_picking_batch_rel amsp on amsp.stock_picking_batch_id = spb.id
-left join (select * from account_move where NAME LIKE 'INV/%'  ) am on am.id = amsp.account_move_id
-right join mos on mos.mo = mp.name
-    LEFT JOIN mo_with_trx MWT ON MWT.NAME = MOS.MO
-where --mp.name ='MO902351' and
-spb.state ='done'
-and am.invoice_date::date between to_date('$from_date','YYYY-MM-DD') and to_date('$to_date','YYYY-MM-DD')
-    AND MWT.NAME IS NULL
-group by 
-mp.name,
-mp.id,
-pt.name,
-pt.id,
-CASE WHEN PC.NAME LIKE 'DIE%' THEN
-       CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
-       ELSE
-       TRIM(SPLIT_PART(PC.NAME, ' ', 1))
-       END,
-pc.name,
-mp.LOT_NO,
-mp.customer_name,
-sml2.qtY_done,
-mp.state ";
-    $resultmos = $db->fetchAll($qmos);
+ ";
 
-    //USE INSERT GET ID
-    foreach ($resultmos as $item) {
-        $mo = $item['mo'];
-        $mo_id = $item['mo_id'];
-        $device = $item['device'];
-        $device_id = $item['device_id'];
-        $category = $item['category'];
-        $customer_name = $item['customer_name'];
-        $earned_hrs = $item['earned_hrs'];
-        $eh_percentage = $item['eh_percentage_per_mo'];
-        $qty_done = $item['quantity_done'];
-        $qty_percentage = $item['qty_percentage_per_mo'];
-        $mo_status = $item['mo_status'];
-        $inv_status = $item['inv_status'];
-        $sbu = $item['sbu'];
-        $invoiced_qty = $item['invoiced_qty'];
-        $mo_done_qty = $item['mo_done_qty'];
-        $remarks = $item['remarks'];
-        $dataMoEntries = [
-            'DATE_RANGE_ID' => $month_id,
-            'MO' => $mo,
-            'MO_ID' => $mo_id,
-            'DEVICE' => $device,
-            'DEVICE_ID' => $device_id,
-            'CATEGORY' => $category,
-            'CUSTOMER_NAME' => $customer_name,
-            'EARNED_HRS' => $earned_hrs,
-            'EH_PERCENTAGE' => $eh_percentage,
-            'QTY_DONE' => $qty_done,
-            'QTY_PERCENTAGE' => $qty_percentage,
-            'MO_STATUS' => $mo_status,
-            'SBU' => $sbu,
-            'IS_INVOICED' => $inv_status,
-            'ADDED_BY' => $user,
-            'INVOICED_QTY' => $invoiced_qty,
-            'MO_DONE_QTY' => $mo_done_qty,
-            'REMARKS'  => $remarks
+        //  UNION ALL
+        //  select
+        // mp.name mo,
+        // mp.id mo_id,
+        // pt.name device,
+        // pt.id device_id,
+        //   CASE WHEN PC.NAME LIKE 'DIE%' THEN
+        //      CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
+        //      ELSE
+        //      TRIM(SPLIT_PART(PC.NAME, ' ', 1))
+        //      END AS SBU,
+        // pc.name category,
+        // mp.LOT_NO LOT_NUMBER,
+        // mp.customer_name,
+        // sml2.qtY_done quantity_done,
+        // null::numeric total_labor,
+        // null::numeric total_multiplied_in_quantity_done,
+        // null::numeric earned_hrs,
+        // null::numeric qty_percentage_per_mo,
+        // null::numeric eh_percentage_per_mo,
+        // mp.state mo_status,
+        // true inv_status,
+        // sum(sml.qty_done) invoiced_qty,
+        // sml2.qtY_done mo_done_qty,
+        // 'INVOICED BUT NO MOVEMENT' REMARKS
+        // from
+        // mrp_production mp
+        // JOIN PRODUCT_PRODUCT PP ON PP.ID = MP.PRODUCT_ID
+        // JOIN PRODUCT_TEMPLATE PT ON PT.ID = PP.PRODUCT_TMPL_ID
+        // JOIN PRODUCT_CATEGORY PC ON PC.ID =PT.CATEG_ID
+        // left join mrp_production_stock_picking_rel mpsp on mpsp.mrp_production_id = mp.id
+        // left join stock_picking sp on sp.id = mpsp.stock_picking_id
+        // left join stock_picking_batch spb on spb.id = sp.batch_id
+        // join stock_move_line sml on sml.picking_id = sp.id  and mp.id = sml.manufacturing_order
+        // left JOIN (select * from stock_move_line where location_dest_id =8) sml2 on sml2.reference = mp.name
+        // left join account_move_stock_picking_batch_rel amsp on amsp.stock_picking_batch_id = spb.id
+        // left join (select * from account_move where NAME LIKE 'INV/%'  ) am on am.id = amsp.account_move_id
+        // right join mos on mos.mo = mp.name
+        //   LEFT JOIN mo_with_trx MWT ON MWT.NAME = MOS.MO
+        // where --mp.name ='MO902351' and
+        // spb.state ='done'
+        // and am.invoice_date::date between to_date('$from_date','YYYY-MM-DD') and to_date('$to_date','YYYY-MM-DD')
+        //   AND MWT.NAME IS NULL
+        // group by 
+        // mp.name,
+        // mp.id,
+        // pt.name,
+        // pt.id,
+        // CASE WHEN PC.NAME LIKE 'DIE%' THEN
+        //      CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
+        //      ELSE
+        //      TRIM(SPLIT_PART(PC.NAME, ' ', 1))
+        //      END,
+        // pc.name,
+        // mp.LOT_NO,
+        // mp.customer_name,
+        // sml2.qtY_done,
+        // mp.state
+        $resultmos = $db->fetchAll($qmos);
 
-        ];
 
-        // $db_ken->insert('M_ACC_TO_WIP', [
-        //     'MAIN_ID' => $old_accrual_id,
-        //     'ACCOUNT_CODE' => $itemToWip['account_code'],
-        //     'ACCOUNT_ID' => $itemToWip['account_id'],
-        //     'CREDIT_ACCOUNT_ID' => $itemToWip['credit_account_id'],
-        //     'ANALYTIC_ACCOUNT' => $itemToWip['analytic_account'],
-        //     'ANALYTIC_ACCOUNT_ID' => $itemToWip['analytic_account_id'] ?: null,
-        //     'MOS' => $itemToWip['mos'],
-        //     'DEBIT' => $itemToWip['debit'] ?: null,
-        //     'CREDIT' => $itemToWip['credit'] ?: null,
-        //     'ITEM_LABEL' => $itemToWip['item_label'],
-        //     // 'RAW_DEBIT' => $itemToWip['raw_debit'] ?: null,
-        //     // 'RAW_CREDIT' => $itemToWip['raw_credit'] ?: null,
-        //     'ADDED_BY' => $user,
-        //     'SBU' => $itemToWip['sbu']
-        // ]);
-        $resultLineItems = $db_ken->insert('M_ACC_DIST_MO', $dataMoEntries);
+        //USE INSERT GET ID
+        foreach ($resultmos as $item) {
+            $mo = $item['mo'];
+            $mo_id = $item['mo_id'];
+            $device = $item['device'];
+            $device_id = $item['device_id'];
+            $category = $item['category'];
+            $customer_name = $item['customer_name'];
+            $earned_hrs = $item['earned_hrs'];
+            $eh_percentage = $item['eh_percentage_per_mo'];
+            $qty_done = $item['quantity_done'];
+            $qty_percentage = $item['qty_percentage_per_mo'];
+            $mo_status = $item['mo_status'];
+            $inv_status = $item['inv_status'];
+            $sbu = $item['sbu'];
+            $invoiced_qty = $item['invoiced_qty'];
+            $mo_done_qty = $item['mo_done_qty'];
+            $remarks = $item['remarks'];
+            $dataMoEntries = [
+                'FROM_DATE' => $from_date,
+                'TO_DATE' => $to_date,
+                'MO' => $mo,
+                'MO_ID' => $mo_id,
+                'DEVICE' => $device,
+                'DEVICE_ID' => $device_id,
+                'CATEGORY' => $category,
+                'CUSTOMER_NAME' => $customer_name,
+                'EARNED_HRS' => $earned_hrs,
+                'EH_PERCENTAGE' => $eh_percentage,
+                'QTY_DONE' => $qty_done,
+                'QTY_PERCENTAGE' => $qty_percentage,
+                'MO_STATUS' => $mo_status,
+                'SBU' => $sbu,
+                'IS_INVOICED' => $inv_status,
+                'ADDED_BY' => $user,
+                'INVOICED_QTY' => $invoiced_qty,
+                'MO_DONE_QTY' => $mo_done_qty,
+                'REMARKS'  => $remarks
+
+            ];
+
+            // $db_ken->insert('M_ACC_TO_WIP', [
+            //     'MAIN_ID' => $old_accrual_id,
+            //     'ACCOUNT_CODE' => $itemToWip['account_code'],
+            //     'ACCOUNT_ID' => $itemToWip['account_id'],
+            //     'CREDIT_ACCOUNT_ID' => $itemToWip['credit_account_id'],
+            //     'ANALYTIC_ACCOUNT' => $itemToWip['analytic_account'],
+            //     'ANALYTIC_ACCOUNT_ID' => $itemToWip['analytic_account_id'] ?: null,
+            //     'MOS' => $itemToWip['mos'],
+            //     'DEBIT' => $itemToWip['debit'] ?: null,
+            //     'CREDIT' => $itemToWip['credit'] ?: null,
+            //     'ITEM_LABEL' => $itemToWip['item_label'],
+            //     // 'RAW_DEBIT' => $itemToWip['raw_debit'] ?: null,
+            //     // 'RAW_CREDIT' => $itemToWip['raw_credit'] ?: null,
+            //     'ADDED_BY' => $user,
+            //     'SBU' => $itemToWip['sbu']
+            // ]);
+            $resultLineItems = $db_ken->insert('M_ACC_MO_WIP', $dataMoEntries);
+        }
     }
-    // exit;
+
+    exit;
     $q = "WITH categ_percentage as (
        SELECT 
     act.id act_id,
@@ -469,7 +345,8 @@ MAA.TOTAL_ACCRUAL_VALUE total_debit,
 FROM
 		 M_ACC_ACCRUAL MAA
 		 JOIN detailed_percentage DP ON DP.m_acc_category_id =MAA.DIST_CATEG_ID
-         WHERE MAA.date_range_id =$month_id
+        --  WHERE MAA.date_range_id =$month_id
+         WHERE MAA.FROM_DATE = TO_dATE('$from_date','YYYY-MM-DD')  AND MAA.TO_DATE = TO_dATE('$to_date','YYYY-MM-DD')
 		 )
 		 	, ranked as(
 		select
@@ -537,7 +414,8 @@ ae.accrual_id,
 	from
 	m_acc_accrual je
     join m_acc_category_tbl mact on mact.id = je.dist_categ_id
-    where je.date_range_id = $month_id
+    -- where je.date_range_id = $month_id
+    WHERE JE.FROM_DATE = TO_dATE('$from_date','YYYY-MM-DD')  AND JE.TO_DATE = TO_dATE('$to_date','YYYY-MM-DD')
 	)
 	select 
 	je.id accrual_id,

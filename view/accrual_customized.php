@@ -1729,6 +1729,12 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         }
                     },
                     {
+                        data: 'from_date'
+                    },
+                    {
+                        data: 'to_date'
+                    },
+                    {
                         data: null,
                         render: function(row) {
                             // Added by Ivan Christian Afan

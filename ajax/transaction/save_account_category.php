@@ -30,10 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          left join m_acc_category_accounts aca on aca.account_id = aa.id WHERE aca.account_id = $acc_id and aca.acc_category_id =$category_id";
 
         $row = $db_ken->fetchRow($check_query);
-        // echo $check_query;
+        // echo $row;
         // exit;
 
-        if ($row['acc_category_id'] !== null) {
+        if (!$row['acc_category_id']) {
             $skipped_accounts[] = $row['account_name'];
             continue;
         }

@@ -30,7 +30,9 @@ SELECT DISTINCT
     '' AS changed_on,
     '' AS changed_by,
     AAA.active,
-    ADG.DEPT_GROUP--,
+    ADG.DEPT_GROUP,
+	false is_group
+    --,
     -- acd.debit_to,
     -- acd.wip_account
 FROM ACCOUNT_ANALYTIC_ACCOUNT AAA
@@ -48,6 +50,21 @@ WHERE
     ) <> ''
     AND AAA.NAME IS NOT NULL
     and aaa.company_id =1
+    union all
+    select
+    id,
+    dept_group dept_name,
+    '' dept_code,
+    added_on,
+    ''added_by,
+    ''changed_on,
+    ''changed_by,
+    active,
+    dept_group,
+    true is_group
+    from
+    m_acc_department_groups
+    where is_dept_setup
     --AND ACD.id IS NULL;  
 ";
 
