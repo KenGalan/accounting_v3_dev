@@ -135,8 +135,10 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 <div class="distTable_wrapper">
 
 
+    <div class="container-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
     <input type="month" name="month_year" id="yearMonthSelect" class="form-control" style="width:250px;">
-
+    <button class="btn btn-success" id="runBtnDist" disabled>RUN PAYROLL DISTTRIBUTION</button>
+    </div>
 
     <div id="massDateRangeSection" style="display:none; float:right; margin-bottom:15px;">
         <label>From:</label>
@@ -186,11 +188,11 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 <!-- <h5>Edit the date range</h5> -->
             <div id="filterSection"  style="text-align:right; margin-left:auto;">
                 <label>From:</label>
-                <input type="date" id="fromDate" disabled>
+                <input type="date" id="fromDate" style="border: none;" disabled>
                 <label>To:</label>
-                <input type="date" id="toDate" disabled>
+                <input type="date" id="toDate" style="border: none;" disabled>
                 <button id="filterBtn" class="btn btn-success" style="display:none;">Apply</button>
-                <button id="editDateRange" class="btn-primary">Edit</button>
+                <!-- <button id="editDateRange" class="btn-primary">Edit</button> -->
             </div>
         </div>
             <div class="modal-body">
@@ -304,7 +306,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             dt.distributionEntriesTbl = $('#distributionEntriesTbl').DataTable({
                 destroy: true,
                 pageLength: 5,
-                processing: true,
+                processing: true, 
                 searching: true,
                 columns: [
                     {
@@ -371,17 +373,54 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                 month: 'short',
                                 day: '2-digit'
                             }).format(d);
-                        }
+                        } 
                     },
                     {
                         data: 'sbu',
                         defaultContent: '',
                         render: function(data, type, row) {
-                            if (!data || data.length === 0) return '';
+                            let sbuArray = [];
+                            let sbuIds = [];
+
+                            // normalize sbu names
+                            if (Array.isArray(data)) {
+                                sbuArray = data;
+                            } else if (typeof data === 'string' && data !== '') {
+                                try {
+                                    let parsed = JSON.parse(data);
+                                    sbuArray = Array.isArray(parsed) ? parsed : [];
+                                } catch (e) {
+                                    sbuArray = String(data)
+                                        .replace(/^\{|\}$/g, '')
+                                        .split(',')
+                                        .map(x => x.trim().replace(/^"|"$/g, ''))
+                                        .filter(Boolean);
+                                }
+                            }
+
+                            if (!sbuArray.length) return '';
+
+                            // normalize sbu ids
+                            if (Array.isArray(row.sbu_ids)) {
+                                sbuIds = row.sbu_ids;
+                            } else if (typeof row.sbu_ids === 'string' && row.sbu_ids !== '') {
+                                try {
+                                    let parsedIds = JSON.parse(row.sbu_ids);
+                                    sbuIds = Array.isArray(parsedIds) ? parsedIds : [];
+                                } catch (e) {
+                                    sbuIds = String(row.sbu_ids)
+                                        .replace(/^\{|\}$/g, '')
+                                        .split(',')
+                                        .map(x => x.trim().replace(/^"|"$/g, ''))
+                                        .filter(Boolean);
+                                }
+                            }
 
                             let html = '';
 
-                            data.forEach(sbu => {
+                            sbuArray.forEach((sbu, index) => {
+                                let sbuId = sbuIds[index] ?? '';
+
                                 html += `
                                     <span class="sbu-badge" style="
                                         display:inline-block;
@@ -390,15 +429,14 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                         padding:3px 8px;
                                         border-radius:12px;
                                         margin-right:5px;
-                                        margin-top: 2px;
-                                        font-size: 12px;
+                                        margin-top:2px;
+                                        font-size:12px;
                                     ">
-                                        ${sbu}
-                                        <span class="removeSbu" data-sbu="${sbu}" style="
-                                            margin-left:6px;
-                                            cursor:pointer;
-                                            font-weight:bold;
-                                        ">✕</span>
+                                        ${String(sbu).trim()}
+                                        <span class="removeSbu"
+                                            data-sbu="${String(sbu).trim()}"
+                                            data-id="${sbuId}"
+                                            style="margin-left:6px; cursor:pointer; font-weight:bold;">✕</span>
                                     </span>
                                 `;
                             });
@@ -448,21 +486,22 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             let anyChecked = $('.rowCheckbox:checked').length > 0;
 
             if (anyChecked) {
-                $('.selectSbu').show();
+                $('#sbuSelect').select2('open');
+                $('#sbuContainer').slideDown();
             } else {
-                $('.selectSbu').hide();
+                $('#sbuSelect').hide();
                 $('#sbuContainer').hide();
             }
 
         });
 
-        $('.selectSbu').on('click', function () {
-            $('#sbuContainer').slideDown();
+        // $('.selectSbu').on('click', function () {
+        //     $('#sbuContainer').slideDown();
 
-            setTimeout(() => {
-                $('#sbuSelect').select2('open');
-            }, 200);
-        });
+        //     setTimeout(() => {
+        //         $('#sbuSelect').select2('open');
+        //     }, 200);
+        // });
 
         }
 
@@ -496,7 +535,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 }
             });
 
-            $('#applySbuBtn').on('click', function () {
+            $('#applySbuBtn').on('click', function () { 
                 let selectedSbus = $('#sbuSelect').select2('data');
 
                 if (!selectedSbus.length) {
@@ -516,28 +555,23 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     let row = dt.distributionEntriesTbl.row(tr);
                     let rowData = row.data();
 
-                    if (!rowData.sbu || !Array.isArray(rowData.sbu)) {
-                        rowData.sbu = [];
-                    }
+                    rowData.sbu = normalizeStringArray(rowData.sbu);
+                    rowData.sbu_ids = normalizeIntArray(rowData.sbu_ids);
 
-                    if (!rowData.sbu_ids || !Array.isArray(rowData.sbu_ids)) {
-                        rowData.sbu_ids = [];
-                    }
+                    selectedSbus.forEach(function (item) {
+                        let sbuText = String(item.text).trim();
+                        let sbuId = parseInt(item.id, 10);
 
-                    selectedSbus.forEach(function(item) {
-                        let sbuText = item.text;
-                        let sbuId = parseInt(item.id);
+                        let alreadyExistsById = rowData.sbu_ids.includes(sbuId);
+                        let alreadyExistsByText = rowData.sbu.includes(sbuText);
 
-                        if (!rowData.sbu.includes(sbuText)) {
+                        if (!alreadyExistsById && !alreadyExistsByText) {
                             rowData.sbu.push(sbuText);
-                        }
-
-                        if (!rowData.sbu_ids.includes(sbuId)) {
                             rowData.sbu_ids.push(sbuId);
                         }
                     });
 
-                    row.data(rowData);
+                    row.data(rowData).invalidate();
                 });
 
                 dt.distributionEntriesTbl.draw(false);
@@ -549,38 +583,201 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 $('#applySbuBtn').hide();
                 $('#sbuContainer').slideUp();
                 $('.selectSbu').hide();
+                $('#saveCustom').show();
             });
 
-
-            $('#distributionEntriesTbl tbody').on('click', '.removeSbu', function (e) {
-                e.stopPropagation();
-
-                let sbuToRemove = $(this).data('sbu');
-                let tr = $(this).closest('tr');
-                let row = dt.distributionEntriesTbl.row(tr);
+            function removeSbuFromRow(row, sbuText, sbuId) {
                 let rowData = row.data();
+                console.log(rowData, 'rowData');
+
+                $.ajax({
+                    url: 'ajax/transaction/remove_sbu_line.php',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        move_line_id: rowData.aml_id,
+                        sbu_id: sbuId
+                    }),
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status !== 'success') {
+                            swal("Error", response.message || "Failed to remove SBU.", "error");
+                            return;
+                        }
+
+                        let sbuArray = [];
+                        let sbuIds = [];
+
+                        if (Array.isArray(rowData.sbu)) {
+                            sbuArray = rowData.sbu;
+                        } else if (typeof rowData.sbu === 'string' && rowData.sbu !== '') {
+                            try {
+                                let parsedSbu = JSON.parse(rowData.sbu);
+                                sbuArray = Array.isArray(parsedSbu) ? parsedSbu : [];
+                            } catch (e) {
+                                sbuArray = String(rowData.sbu)
+                                    .replace(/^\{|\}$/g, '')
+                                    .split(',')
+                                    .map(x => x.trim().replace(/^"|"$/g, ''))
+                                    .filter(Boolean);
+                            }
+                        }
+
+                        if (Array.isArray(rowData.sbu_ids)) {
+                            sbuIds = rowData.sbu_ids;
+                        } else if (typeof rowData.sbu_ids === 'string' && rowData.sbu_ids !== '') {
+                            try {
+                                let parsedIds = JSON.parse(rowData.sbu_ids);
+                                sbuIds = Array.isArray(parsedIds) ? parsedIds : [];
+                            } catch (e) {
+                                sbuIds = String(rowData.sbu_ids)
+                                    .replace(/^\{|\}$/g, '')
+                                    .split(',')
+                                    .map(x => x.trim().replace(/^"|"$/g, ''))
+                                    .filter(Boolean);
+                            }
+                        }
+
+                        let newSbu = [];
+                        let newIds = [];
+
+                        sbuArray.forEach((sbu, index) => {
+                            let id = sbuIds[index] ?? '';
+
+                            if (parseInt(id, 10) !== parseInt(sbuId, 10)) {
+                                newSbu.push(sbu);
+                                newIds.push(id);
+                            }
+                        });
+
+                        rowData.sbu = newSbu;
+                        rowData.sbu_ids = newIds;
+
+                        row.data(rowData).invalidate().draw(false);
+
+                        // swal("Success", response.message, "success");
+                    },
+                    error: function(xhr, status, error) {
+                        swal("Error", "AJAX request failed.", "error");
+                        console.log(xhr.responseText || error);
+                    }
+                });
+            }
+            
+            $('#distributionEntriesTbl tbody').on('click', '.removeSbu', function(e) {
+            e.stopPropagation();
+
+                let btn = $(this);
+                let sbuText = btn.data('sbu');
+                let sbuId = btn.data('id');
+
+                let tr = btn.closest('tr');
+                let row = dt.distributionEntriesTbl.row(tr);
 
                 swal({
                     title: "Remove SBU?",
-                    text: `Remove ${sbuToRemove}?`,
+                    text: sbuText,
                     type: "warning",
                     showCancelButton: true,
-                    confirmButtonColor: "#DD6B55",
-                    confirmButtonText: "Yes"
-                }, function (isConfirm) {
-
-                    if (isConfirm) {
-
-                        rowData.sbu = rowData.sbu.filter(s => s !== sbuToRemove);
-
-                        row.data(rowData).draw(false);
-                        toggleSaveButton();
-
-                        swal("Removed!", "SBU removed.", "success");
-                    }
-
+                    confirmButtonColor: "#d33",
+                    confirmButtonText: "Yes, remove it!"
+                }, function() {
+                    removeSbuFromRow(row, sbuText, sbuId);
                 });
             });
+
+            // $('#distributionEntriesTbl tbody').on('click', '.removeSbu', function (e) {
+            //     e.stopPropagation();
+
+            //     let sbuToRemove = $(this).data('sbu');
+            //     let tr = $(this).closest('tr');
+            //     let row = dt.distributionEntriesTbl.row(tr);
+            //     let rowData = row.data();
+
+            //     swal({
+            //         title: "Remove SBU?",
+            //         text: `Remove ${sbuToRemove}?`,
+            //         type: "warning",
+            //         showCancelButton: true,
+            //         confirmButtonColor: "#DD6B55",
+            //         confirmButtonText: "Yes"
+            //     }, function (isConfirm) {
+
+            //         if (isConfirm) {
+
+            //             rowData.sbu = rowData.sbu.filter(s => s !== sbuToRemove);
+
+            //             row.data(rowData).draw(false);
+            //             toggleSaveButton();
+
+            //             swal("Removed!", "SBU removed.", "success");
+            //         } 
+
+            //     });
+            // });
+
+        //   $('#distributionEntriesTbl tbody').on('click', '.removeSbu', function () {
+        //     let sbuIdToRemove = parseInt($(this).data('id'));
+        //     let sbuTextToRemove = $(this).data('sbu');
+        //     let tr = $(this).closest('tr');
+        //     let row = dt.distributionEntriesTbl.row(tr);
+        //     let rowData = row.data();
+
+        //     swal({
+        //         title: "Remove SBU?",
+        //         text: "Remove " + sbuTextToRemove + "?",
+        //         type: "warning",
+        //         showCancelButton: true,
+        //         confirmButtonColor: "#DD6B55",
+        //         confirmButtonText: "Yes"
+        //     }, function (isConfirm) {
+        //         if (!isConfirm) return;
+
+        //         $.ajax({
+        //             url: 'ajax/transaction/remove_sbu_line.php',
+        //             type: 'POST',
+        //             dataType: 'json',
+        //             contentType: 'application/json',
+        //             data: JSON.stringify({
+        //                 move_line_id: rowData.aml_id,
+        //                 sbu_id: sbuIdToRemove
+        //             }),
+        //             success: function (res) {
+        //                 if (res.status === 'success') {
+        //                     let currentIds = Array.isArray(rowData.sbu_ids) ? rowData.sbu_ids : [];
+        //                     let currentText = Array.isArray(rowData.sbu) ? rowData.sbu : [];
+
+        //                     let newIds = [];
+        //                     let newText = [];
+
+        //                     currentIds.forEach(function (id, index) {
+        //                         if (parseInt(id) !== sbuIdToRemove) { 
+        //                             newIds.push(parseInt(id));
+        //                             newText.push(currentText[index]);
+        //                         }
+        //                     });
+
+        //                     rowData.sbu_ids = newIds;
+        //                     rowData.sbu = newText;
+
+        //                     rowData.sbu_display = newText.join(', ');
+        //                     rowData.sbu_html = '';
+
+        //                     row.data(rowData);
+        //                     row.invalidate().draw(false);
+
+        //                     swal("Removed!", res.message, "success");
+        //                 } else {
+        //                     swal("Error", res.message, "error");
+        //                 }
+        //             },
+        //             error: function (xhr) {
+        //                 console.log(xhr.responseText);
+        //                 swal("Error", "Failed to update SBU.", "error");
+        //             }
+        //         });
+        //     });
+        // });
 
              function toggleSaveButton() {
              let hasSbu = false;
@@ -601,8 +798,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 }
             }
 
-            $('#saveCustom').on('click', function () {
+          $('#saveCustom').on('click', function () {
             let moveId = $('#myModalOdooEntries').data('id');
+            // console.log(moveId);
 
             if (!moveId) {
                 swal("Error", "No selected journal entry.", "error");
@@ -613,10 +811,11 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
             dt.distributionEntriesTbl.rows().every(function () {
                 let rowData = this.data();
-                console.log('rowData:', rowData);
+                // console.log('rowData:', rowData);
 
                 if (rowData.sbu_ids && rowData.sbu_ids.length > 0) {
                     selectedLines.push({
+                        move_id: moveId,
                         move_line_id: rowData.aml_id,
                         sbu: rowData.sbu_ids,
                         debit: rowData.debit || 0,
@@ -642,11 +841,11 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 data: JSON.stringify({
                     move_id: moveId,
                     rows: selectedLines
-                }),
+                }), 
                 success: function (response) {
                     if (response.status === 'success') {
                         swal("Success", response.message, "success");
-                        $('.btness').hide();
+                        $('#saveCustom').hide();
                     } else {
                         swal("Error", response.message, "error");
                     }
@@ -678,62 +877,62 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             }).format(d);
         }
 
-         $('#filterBtn').on('click', function () {
-            let fromDate = $('#fromDate').val(); 
-            let toDate = $('#toDate').val();
-            let moveId = $('#myModalOdooEntries').data('id');
-            let totalAmounts = $('#myModalOdooEntries').data('total-amount');
-            let accountingDate = $('#myModalOdooEntries').data('accounting-date');
-            // console.log(totalAmounts);
+            $('#filterBtn').on('click', function () {
+                let fromDate = $('#fromDate').val(); 
+                let toDate = $('#toDate').val();
+                let moveId = $('#myModalOdooEntries').data('id');
+                let totalAmounts = $('#myModalOdooEntries').data('total-amount');
+                let accountingDate = $('#myModalOdooEntries').data('accounting-date');
+                // console.log(totalAmounts);
 
-            if (!fromDate || !toDate) {
-                swal("Warning", "Please select both dates.", "warning");
-                return; 
-            }
-
-            if (fromDate > toDate) {
-                swal("Warning", "From date cannot be greater than To date.", "warning");
-                return;
-            }
-
-            if (!moveId || !totalAmounts || !accountingDate) {
-                swal("Error", "No selected journal entry.", "error");
-                return;
-            }
-
-            let display = `${formatDate(fromDate)} - ${formatDate(toDate)}`;
-            $('#dateRangeDisplay').text(display);
-
-            $.ajax({
-                url: 'ajax/transaction/save_custom_distribution.php',
-                type: 'POST',
-                dataType: 'json',
-                data: {
-                    move_id: moveId,
-                    from_date: fromDate,
-                    to_date: toDate, 
-                    total_amount: totalAmounts,
-                    accounting_date: accountingDate
-                },
-                success: function (response) {
-                    if (response.status === 'success') {
-                        dt.distributionEntriesTbl.draw();
-
-                        $('#fromDate, #toDate').prop('disabled', true);
-                        $('#filterBtn').hide();
-                        $('#editDateRange').show();
-                        init();
-
-                        swal("Success", "Date range saved.", "success");
-                    } else {
-                        swal("Error", response.message, "error");
-                    }
-                },
-                error: function () {
-                    swal("Error", "Failed to save date range.", "error");
+                if (!fromDate || !toDate) {
+                    swal("Warning", "Please select both dates.", "warning");
+                    return; 
                 }
-            });
-        });
+
+                if (fromDate > toDate) {
+                    swal("Warning", "From date cannot be greater than To date.", "warning");
+                    return;
+                }
+
+                if (!moveId || !totalAmounts || !accountingDate) {
+                    swal("Error", "No selected journal entry.", "error");
+                    return;
+                }
+
+                let display = `${formatDate(fromDate)} - ${formatDate(toDate)}`;
+                $('#dateRangeDisplay').text(display);
+
+                $.ajax({
+                    url: 'ajax/transaction/save_custom_distribution.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        move_id: moveId,
+                        from_date: fromDate,
+                        to_date: toDate, 
+                        total_amount: totalAmounts,
+                        accounting_date: accountingDate
+                    },
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            dt.distributionEntriesTbl.draw(); 
+
+                            $('#fromDate, #toDate').prop('disabled', true);
+                            $('#filterBtn').hide();
+                            $('#editDateRange').show();
+                            init();
+
+                            swal("Success", "Date range saved.", "success");
+                        } else {
+                            swal("Error", response.message, "error");
+                        }
+                    },
+                    error: function () {
+                        swal("Error", "Failed to save date range.", "error");
+                    }
+                    });
+                });
 
                 function toggleMassDateRange() {
                 let checkedCount = distTable.$('.rowCheckbox:checked').length;
@@ -751,7 +950,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 toggleMassDateRange();
             });
 
-           $('#filterBtnMass').on('click', function () {
+            // MASS UPDATE SA MGA SELECTED DATE RANGE
+           $('#filterBtnMass').on('click', function () { 
             let fromDate = $('#massFromDate').val();
             let toDate   = $('#massToDate').val();
 
@@ -820,7 +1020,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     swal("Error", "Server error while saving.", "error");
                 }
             });
-        });
+        }); // END
 
         async function init() { 
             try {
@@ -1230,6 +1430,47 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         function stopLoading(selector) {
             $(selector).waitMe('hide');
         }
+
+        function normalizeArray(value) {
+        if (Array.isArray(value)) {
+            return value;
+        }
+
+        if (value === null || value === undefined || value === '') {
+            return [];
+        }
+
+        if (typeof value === 'string') {
+            try {
+                let parsed = JSON.parse(value);
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                }
+            } catch (e) {}
+
+            return String(value)
+                .replace(/^\{|\}$/g, '')
+                .split(',')
+                .map(x => x.trim().replace(/^"|"$/g, ''))
+                .filter(Boolean);
+        }
+
+        return [];
+    }
+
+    function normalizeStringArray(value) {
+        return normalizeArray(value).map(function(x) {
+            return String(x).trim();
+        }).filter(Boolean);
+    }
+
+    function normalizeIntArray(value) {
+        return normalizeArray(value).map(function(x) {
+            return parseInt(x, 10);
+        }).filter(function(x) {
+            return !isNaN(x);
+        });
+    }
 
     });
 </script>

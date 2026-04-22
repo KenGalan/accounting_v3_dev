@@ -27,6 +27,11 @@ if ($selectDateRange) {
         $to_date = $date_range['end_date'];
         $last_date_of_month = $date_range['last_date_of_month'];
 
+        $qCheck = "SELECT * FROM M_ACC_MO_WIP WHERE FROM_DATE = TO_dATE('$from_date','YYYY-MM-DD')  AND TO_DATE = TO_dATE('$to_date','YYYY-MM-DD')";
+        if ($db_ken->fetchRow($qCheck)) {
+            continue;
+        }
+        // exit;
 
         $qmos = "	--with mos as (SELECT DISTINCT MO FROM M_ACC_MO_WIP WHERE FROM_DATE = TO_dATE('$from_date','YYYY-MM-DD')  AND TO_DATE = TO_dATE('$to_date','YYYY-MM-DD') AND NOT IS_INVOICED),
        WITH  mo_with_trx AS (

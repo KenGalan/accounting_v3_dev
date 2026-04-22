@@ -14,10 +14,11 @@ if (!$conn) {
 
 $input = json_decode(file_get_contents('php://input'), true);
 
-$move_id = isset($input['move_id']) ? trim($input['move_id']) : '';
-$rows    = isset($input['rows']) ? $input['rows'] : [];
+$from_date = isset($input['from_date']) ? trim($input['from_date']) : '';
+$to_date   = isset($input['to_date']) ? trim($input['to_date']) : '';
+$rows      = isset($input['rows']) ? $input['rows'] : [];
 
-if ($move_id === '' || empty($rows)) {
+if ($from_date === '' || $to_date === '' || empty($rows)) {
     echo json_encode([
         'status' => 'error',
         'message' => 'Missing required fields.'
@@ -25,102 +26,88 @@ if ($move_id === '' || empty($rows)) {
     exit;
 }
 
-foreach ($rows as $r) {
-    $move_line_id        = isset($r['move_line_id']) ? trim($r['move_line_id']) : '';
-    $sbu                 = isset($r['sbu']) ? $r['sbu'] : [];
-    $debit               = isset($r['debit']) ? $r['debit'] : 0;
-    $credit              = isset($r['credit']) ? $r['credit'] : 0;
-    $analytic_account_id = isset($r['analytic_account_id']) && $r['analytic_account_id'] !== '' ? $r['analytic_account_id'] : null;
-    $analytic_account    = isset($r['analytic_account']) ? trim($r['analytic_account']) : '';
-    $account_id          = isset($r['account_id']) && $r['account_id'] !== '' ? $r['account_id'] : null;
-    $account_name        = isset($r['account_name']) ? trim($r['account_name']) : '';
+if ($from_date > $to_date) {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Invalid date range.'
+    ]);
+    exit;
+}
 
-    if ($move_line_id === '' || empty($sbu)) {
+foreach ($rows as $r) {
+    $move_id         = isset($r['move_id']) ? trim($r['move_id']) : '';
+    $total_amount    = isset($r['total_amount']) ? $r['total_amount'] : '';
+    $accounting_date = isset($r['accounting_date']) ? trim($r['accounting_date']) : '';
+
+    if ($move_id === '' || $total_amount === '' || $accounting_date === '') {
         echo json_encode([
             'status' => 'error',
-            'message' => 'Missing line data.'
+            'message' => 'Missing row data.'
         ]);
         exit;
     }
 
-    $pg_sbu_array = '{' . implode(',', array_map('intval', $sbu)) . '}';
-
     $check_sql = "
-        SELECT move_line_id
-        FROM m_acc_cust_dist_line
-        WHERE move_line_id = $1
+        SELECT id
+        FROM m_acc_cust_dist
+        WHERE move_id = $1
         LIMIT 1
     ";
-    $check_result = pg_query_params($conn, $check_sql, array($move_line_id));
+    $check_result = pg_query_params($conn, $check_sql, array($move_id));
 
     if ($check_result && pg_num_rows($check_result) > 0) {
         $update_sql = "
-            UPDATE m_acc_cust_dist_line
-            SET sbu = $2,
-                debit = $3,
-                credit = $4,
-                analytic_account_id = $5,
-                analytic_account = $6,
-                account_id = $7,
-                account_name = $8
-            WHERE move_line_id = $1
+            UPDATE m_acc_cust_dist
+            SET from_date = $2,
+                to_date = $3,
+                total_amount = $4,
+                accounting_date = $5
+            WHERE move_id = $1
         ";
         $update_result = pg_query_params($conn, $update_sql, array(
-            $move_line_id,
-            $pg_sbu_array,
-            $debit,
-            $credit,
-            $analytic_account_id,
-            $analytic_account,
-            $account_id,
-            $account_name
+            $move_id,
+            $from_date,
+            $to_date,
+            $total_amount,
+            $accounting_date
         ));
 
         if (!$update_result) {
             echo json_encode([
                 'status' => 'error',
-                'message' => 'Failed to update distribution line.'
+                'message' => 'Failed to update date range.'
             ]);
             exit;
         }
     } else {
         $insert_sql = "
-            INSERT INTO m_acc_cust_dist_line (
-                move_line_id,
-                sbu,
-                debit,
-                credit,
-                analytic_account_id,
-                analytic_account,
-                account_id,
-                account_name
+            INSERT INTO m_acc_cust_dist (
+                move_id,
+                from_date,
+                to_date,
+                total_amount,
+                accounting_date
             )
             VALUES (
                 $1,
                 $2,
                 $3,
                 $4,
-                $5,
-                $6,
-                $7,
-                $8
+                $5
             )
         ";
         $insert_result = pg_query_params($conn, $insert_sql, array(
-            $move_line_id,
-            $pg_sbu_array,
-            $debit,
-            $credit,
-            $analytic_account_id,
-            $analytic_account,
-            $account_id,
-            $account_name
+            $move_id,
+            $from_date,
+            $to_date,
+            $total_amount,
+            $accounting_date
         ));
 
         if (!$insert_result) {
             echo json_encode([
                 'status' => 'error',
-                'message' => 'Failed to save distribution line.'
+                'message' => 'Failed to save date range.'
             ]);
             exit;
         }
@@ -129,5 +116,5 @@ foreach ($rows as $r) {
 
 echo json_encode([
     'status' => 'success',
-    'message' => 'Custom distribution lines saved successfully.'
+    'message' => 'Mass date range saved successfully.'
 ]);

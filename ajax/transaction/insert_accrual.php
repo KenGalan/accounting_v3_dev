@@ -11,32 +11,43 @@ if (!isset($_SESSION['ppc']['emp_no'])) : $user = 0;
     exit;
 endif; //NOT ISSET SESSION
 
-$month_id = intval($_POST['month_id']);
+$month_id = isset($_POST['month_id']) ? intval($_POST['month_id']) : 0;
 
+$year_month = $_POST['year_month'];
+// echo $year_month;
+// exit;
 $acc_data = json_decode($_POST['acc_data'], true);
 
 
 try {
     $db_ken->beginTransaction();
 
+    if ($month_id == 0) {
+        $month_entries = [
+            'YEAR_MONTH' =>    $year_month
+        ];
 
+        $month_id = $db_ken->insert_get_id('M_ACC_MONTH', $month_entries, 'id');
+    }
     foreach ($acc_data as $row) {
 
         if ($row['from_date']) {
             $insertData = [
-                'DATE_RANGE_ID' => $month_id,
+                'MONTH_ID' => $month_id,
                 'CREDIT_TO' => $row['credit_account'],
                 'TOTAL_ACCRUAL_VALUE' => $row['accrual_value'],
                 'DIST_CATEG_ID' => intval($row['dist_template']),
                 'FROM_DATE' => $row['from_date'],
-                'TO_DATE' => $row['to_date']
+                'TO_DATE' => $row['to_date'],
+                'ADDED_BY' => intval($user)
             ];
         } else {
             $insertData = [
-                'DATE_RANGE_ID' => $month_id,
+                'MONTH_ID' => $month_id,
                 'CREDIT_TO' => $row['credit_account'],
                 'TOTAL_ACCRUAL_VALUE' => $row['accrual_value'],
-                'DIST_CATEG_ID' => intval($row['dist_template'])
+                'DIST_CATEG_ID' => intval($row['dist_template']),
+                'ADDED_BY' => intval($user)
             ];
         }
 

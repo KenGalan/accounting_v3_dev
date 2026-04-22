@@ -63,6 +63,7 @@
             <th>SBU</th>
             <th>Date Added</th>
             <th>Added By</th>
+            <th>Analytic Account</th>
             <!-- <th>Changed By</th>
             <th>Changed On</th> -->
             <th>Action</th>
@@ -84,12 +85,92 @@
                 { data: 'date_added' },
                 { data: 'added_by' },
                 {
+                    data: null,
+                    render: function(data, type, row, meta) {
+                        let selectedId = row.analytic_account_id || '';
+                        let selectedText = row.analytic_account || 'Select Analytic Account';
+
+                        return `
+                            <select class="form-control analyticAccountSelect" style="width:100%;">
+                                <option value="${selectedId}" selected>${selectedText}</option>
+                            </select>
+                        `;
+                    }
+                },
+                {
                     data: 'id',
-                    render: function(data) {
-                        return `<button type="button" class="btn btn-sm btn-danger deleteRowBtn" data-id="${data}">Delete</button>`;
+                    render: function(data, type, row, meta) {
+                        return `
+                            <button type="button" class="btn btn-sm btn-danger deleteRowBtn" data-id="${data}">
+                                Delete
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary updateRowBtn" data-id="${data}" disabled>
+                                Update
+                            </button>
+                        `;
                     }
                 }
             ]
+        });
+
+        $('#accountTable').on('draw.dt', function () {
+            $('.analyticAccountSelect').select2({
+                width: '100%',
+                placeholder: 'Select Analytic Account',
+                ajax: {
+                    url: 'ajax/fetch/fetch_analytic_acc_sbu.php',
+                    type: 'GET',
+                    dataType: 'json',
+                    delay: 250,
+                    processResults: function(data) {
+                        return {
+                            results: data
+                        };
+                    },
+                    cache: true
+                }
+            });
+        });
+        
+        $('#accountTable tbody').on('change', '.analyticAccountSelect', function () {
+            let tr = $(this).closest('tr');
+            tr.find('.updateRowBtn').prop('disabled', false);
+        });
+
+       $('#accountTable tbody').on('click', '.updateRowBtn', function () {
+            let tr = $(this).closest('tr');
+            let row = accountTable.row(tr);
+            let rowData = row.data();
+
+            let analyticAccountId = tr.find('.analyticAccountSelect').val();
+            let analyticAccountText = tr.find('.analyticAccountSelect option:selected').text();
+            // console.log(analyticAccountId, analyticAccountText, 'selected values');
+
+            rowData.analytic_account_id = analyticAccountId;
+            rowData.analytic_account = analyticAccountText;
+            // console.log(rowData, 'dwqdqwdd');
+
+            $.ajax({
+                url: 'ajax/transaction/update_analytic_account.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    id: rowData.id,
+                    analytic_account_id: analyticAccountId
+                },
+                success: function(res) {
+                    if (res.status === 'success') {
+                        row.data(rowData).invalidate().draw(false);
+                        tr.find('.updateRowBtn').prop('disabled', true);
+                        swal("Success", "Updated successfully", "success");
+                    } else {
+                        swal("Error", res.message || "Update failed", "error");
+                    }
+                },
+                error: function() {
+                    swal("Error", "Update failed", "error");
+                }
+            });
         });
 
         $('#toggleInputBtn').on('click', function() {

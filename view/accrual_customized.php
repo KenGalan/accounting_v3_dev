@@ -132,7 +132,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
     <select id="yearMonthSelect" data-selected="<?= $selectedYM ?>" class="form-control" style="width:250px;">
         <option class="custom-option" value=""></option>
     </select> -->
-
+    <input type="month" name="month_year" id="yearMonthSelect" class="form-control" style="width:250px; display:unset !important">
     <button class="btn btn-success" id="btnRunDist">Run Distribution</button>
     <button class="btn btn-primary" id="btnModalAccrual">Add Accrual</button>
 
@@ -412,21 +412,18 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         let accounts_tagged_global = [];
         let dist_template_global = [];
         let accrualTableInitialized = false;
+        let currentMonthYearValue = $('#yearMonthSelect').val();
 
         async function init() {
             accounts_tagged_global = await accountList();
             dist_template_global = await distTemplateList();
             initDistTable();
             // loadYearMonth();
-            fetchAccrual()
+            fetchAccrual('')
         }
 
         init();
 
-        $("#yearMonthSelect").select2({
-            placeholder: "Select Year-Month",
-            allowClear: true
-        });
 
         $('#btnExcel').hide();
 
@@ -630,17 +627,18 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         // BUTTON NG ACCRUAL
         $('#btnModalAccrual').on('click', async function() {
             month_id = $(this).attr('data-id');
-            if (!month_id) {
-                console.log('wala ngani')
-                swal("Please setup date range first!", "", "error");
+            year_month = $(this).attr('data-yearmonth-id');
+            // if (!month_id) {
+            //     console.log('wala ngani')
+            //     swal("Please setup date range first!", "", "error");
 
-            } else {
-                $('#accrualTagging #saveAccTagBtn').attr('data-id', month_id)
-
-                await accountList();
-                await distTemplateList();
-                $('#accrualTagging').modal('show');
-            }
+            // } else {
+            $('#accrualTagging #saveAccTagBtn').attr('data-id', month_id)
+            $('#accrualTagging #saveAccTagBtn').attr('data-yearmonth-id', year_month)
+            await accountList();
+            await distTemplateList();
+            $('#accrualTagging').modal('show');
+            // }
 
         }); // END
 
@@ -671,6 +669,26 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
         // }); // END
 
+
+        $('#yearMonthSelect').on('change', function() {
+            const newMonthSelected = $(this).val();
+
+            // check if may laman DataTable
+            if (distTable.rows().count() > 0) {
+                alert("You can't change date when you have active accrual.");
+
+                // revert selection
+                $(this).val(currentMonthYearValue);
+
+                return;
+            }
+
+            // update current value
+            // currentMonthYearValue = newValue;
+
+            // proceed
+            fetchAccrual(newMonthSelected);
+        });
         // BUTTON NG ACCRUAL
         $('#btnInsertToOdoo').on('click', async function() {
             // fetchAccrual()
@@ -1294,10 +1312,11 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
         $('#accrualTagging').on('click', '#saveAccTagBtn', function() {
             month_id = $(this).attr('data-id')
+            year_month = $(this).attr('data-yearmonth-id')
             new_accrual = getAccrualToInsertData()
             if (!new_accrual) return;
             // console.log(new_accrual)
-            insertAccrual(new_accrual, month_id)
+            insertAccrual(new_accrual, month_id, year_month)
         })
 
 
@@ -1461,7 +1480,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         //     });
         // }
 
-        function insertAccrual(acc_data, month_id) {
+        function insertAccrual(acc_data, month_id, year_month) {
 
             hasError = false;
             // invalidCount = 0;
@@ -1500,6 +1519,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 dataType: 'json',
                 data: {
                     month_id: month_id,
+                    year_month: year_month,
                     acc_data: JSON.stringify(acc_data),
                 },
                 success: function(response) {
@@ -1535,44 +1555,16 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
         }
 
-        // function loadYearMonth() {
 
-        //     const selectedYM = $("#yearMonthSelect").data("selected");
-        //     // console.log(selectedYM);
 
-        //     $.ajax({
-        //         url: "ajax/fetch/get_year_month.php",
-        //         method: "POST",
-        //         dataType: "json",
-        //         data: {
-        //             is_dept_distributed: 'false'
-        //         },
-        //         success: function(data) {
 
-        //             $("#yearMonthSelect").empty().append(`<option value=""></option>`);
-
-        //             data.forEach(item => {
-        //                 $("#yearMonthSelect").append(`
-        //             <option value="${item.year_month}" data-id="${item.date_range_id}">
-        //                 ${item.year_month}
-        //             </option>
-        //         `);
-        //             });
-
-        //             if (selectedYM) {
-        //                 $("#yearMonthSelect").val(selectedYM).trigger("change");
-        //             }
-        //         }
-        //     });
-        // }
-
-        function fetchAccrual() {
+        function fetchAccrual(newMonthSelected) {
             $.ajax({
                 url: "ajax/fetch/fetch_accrual.php",
                 method: "POST",
-                // data: {
-                //     year_month: yearMonth
-                // },
+                data: {
+                    year_month: newMonthSelected
+                },
                 dataType: "json",
                 success: function(data) {
                     $('#btnExcel').show();
@@ -1585,25 +1577,45 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                     if (date_range_val) {
                         month_id = date_range_val['id'];
+                        year_month = date_range_val['year_month'];
+
+                        currentMonthYearValue = newMonthSelected !== '' ? newMonthSelected : year_month;
+                        // console.log(newMonthSelected)
+                        $('#yearMonthSelect').val(currentMonthYearValue)
+
+
                         $('#btnRunDist').attr('data-id', month_id);
                         $('#btnInsertToOdoo').attr('data-id', month_id);
                         $('#btnModalAccrual').attr('data-id', month_id);
+                        $('#btnRunDist').attr('data-yearmonth-id', currentMonthYearValue);
+                        $('#btnInsertToOdoo').attr('data-yearmonth-id', currentMonthYearValue);
+                        $('#btnModalAccrual').attr('data-yearmonth-id', currentMonthYearValue);
+
+
                         $('#btnRevert').attr('data-id', month_id);
+
 
                         const distributed = date_range_val['is_dept_distributed'] === 't';
                         $('#btnRunDist, #btnModalAccrual').toggle(!distributed);
-                        // $('#btnRunDist').toggle(!distributed);
                         $('#btnInsertToOdoo').toggle(date_range_val['odoo_inserted'] !== 'True' && date_range_val['is_dept_distributed'] === 't');
 
 
                     } else {
                         console.log('bat wala')
+                        $('#btnRunDist').attr('data-id', '');
+                        $('#btnInsertToOdoo').attr('data-id', '');
+                        $('#btnModalAccrual').attr('data-id', '');
+                        $('#btnRevert').attr('data-id', '');
+                        $('#btnRunDist').attr('data-yearmonth-id', newMonthSelected);
+                        $('#btnInsertToOdoo').attr('data-yearmonth-id', newMonthSelected);
+                        $('#btnModalAccrual').attr('data-yearmonth-id', newMonthSelected);
                         // $('#btnInsertToOdoo').toggle();
-                        $('#btnRunDist, #btnInsertToOdoo').toggle();
+                        $('#btnRunDist, #btnInsertToOdoo').css('display', 'none');
                     }
 
                     if (active_acc) {
 
+                        $('#yearMonthSelect').prop('readonly', true);
                         active_acc.forEach(row => {
                             grouped[row.id] = row;
                         });
