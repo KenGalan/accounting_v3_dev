@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 
 $db = new Postgresql();
@@ -17,8 +18,9 @@ $from_date = isset($_POST['from_date']) ? trim($_POST['from_date']) : '';
 $to_date   = isset($_POST['to_date']) ? trim($_POST['to_date']) : '';
 $total_amount = isset($_POST['total_amount']) ? trim($_POST['total_amount']) : '';
 $accounting_date = isset($_POST['accounting_date']) ? trim($_POST['accounting_date']) : '';
+$added_by  = $_SESSION['ppc']['emp_no'];
 
-if ($move_id === '' || $from_date === '' || $to_date === '' || $total_amount === '' || $accounting_date === '') {
+if ($move_id === '' || $from_date === '' || $to_date === '' || $total_amount === '' || $accounting_date === '' || $added_by === '') {
     echo json_encode([
         'status' => 'error',
         'message' => 'Missing required fields.'
@@ -48,10 +50,11 @@ if ($check_result && pg_num_rows($check_result) > 0) {
         SET from_date = $2,
             to_date = $3,
             total_amount = $4,
-            accounting_date = $5
+            accounting_date = $5,
+            added_by = $6
         WHERE move_id = $1
     ";
-    $update_result = pg_query_params($conn, $update_sql, array($move_id, $from_date, $to_date, $total_amount, $accounting_date));
+    $update_result = pg_query_params($conn, $update_sql, array($move_id, $from_date, $to_date, $total_amount, $accounting_date, $added_by));
 
     if ($update_result) {
         echo json_encode([
@@ -73,17 +76,19 @@ $insert_sql = "
         from_date,
         to_date,
         total_amount,
-        accounting_date
+        accounting_date,
+        added_by
     )
     VALUES (
         $1,
         $2,
         $3,
         $4,
-        $5
+        $5,
+        $6
     )
 ";
-$insert_result = pg_query_params($conn, $insert_sql, array($move_id, $from_date, $to_date, $total_amount, $accounting_date));
+$insert_result = pg_query_params($conn, $insert_sql, array($move_id, $from_date, $to_date, $total_amount, $accounting_date, $added_by));
 
 if ($insert_result) {
     echo json_encode([

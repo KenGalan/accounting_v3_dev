@@ -30,136 +30,136 @@ foreach ($data  as $row) {
 
 
     $q = "with maa as(
-    select maa.total_accrual_value - sum(debit) total_diff,maa.*,am.date actual_apv_date from account_move am
-    join  account_move_line aml on aml.move_id = am.id
-    join m_acc_accrual maa on maa.credit_to = aml.account_id
-    where am.id = $apv_id and maa.id =$accrual_id
-    group by
-    maa.total_accrual_value, maa.id,am.date
-    )
-    , reversed_accrual as(
-    select maa.id accrual_id,
-    maa.total_diff total_credit,
-    maad.distribution_percentage,
-    trunc(ABS(maa.total_diff) * (maad.distribution_percentage/100),2) allocation_trunc,
-    ABS(maa.total_diff) * (maad.distribution_percentage/100) allocation,
-        sum(trunc(ABS(maa.total_diff) * (maad.distribution_percentage/100),2)) over (partition by MAA.ID) total_allocation_trunc,
-            sum(ABS(maa.total_diff) * (maad.distribution_percentage/100)) over (partition by MAA.ID) total_allocation,
-            '' dept_group,
-            '' dept_group_id,
-            maad.analytic_account dept,
-            maad.analytic_account_id,
-            maa.credit_to debit_to,
-            maad.account_id credit_to,
-            MAAD.WIP_ACCOUNT_ID wip_account,
-            maa.journal_id,
-            maa.actual_apv_date
-    from maa
-    join M_ACC_ACCRUAL_DIST maad on  maad.accrual_id = maa.id
-    where maa.id =$accrual_id and maad.distribution_percentage is not null
-    )
-    , ranked as(
-            select
-    ra.accrual_id,
-        ra.total_credit,
-        ra.distribution_percentage,
-        ra.allocation - ra.allocation_trunc allocation_diff,
-        ra.allocation_trunc,
-        ((ra.total_allocation - ra.total_allocation_trunc)/0.01)::integer rows_to_adjust,
-        ROW_NUMBER() OVER (PARTITION BY ra.accrual_id ORDER BY ra.allocation - ra.allocation_trunc DESC) AS rn,
-        ra.dept_group,
-        ra.dept_group_ID,
-        ra.dept,
-                ra.analytic_account_id,
-                    ra.credit_to,
-                    ra.wip_account,
-                    ra.journal_id,
-                    ra.actual_apv_date
-        from reversed_accrual ra
+        select maa.total_accrual_value - sum(debit) total_diff,maa.*,am.date actual_apv_date from account_move am
+        join  account_move_line aml on aml.move_id = am.id
+        join m_acc_accrual maa on maa.credit_to = aml.account_id
+        where am.id = $apv_id and maa.id =$accrual_id
+        group by
+        maa.total_accrual_value, maa.id,am.date
         )
-        , final_DEPT_DIST as (
-        select 
-        accrual_id,
-        distribution_percentage,
-         CASE 
-                WHEN rn <= rows_to_adjust THEN allocation_trunc + 0.01
-                ELSE allocation_trunc
-            END AS credit_final,
-        dept_group,
-        dept_group_ID,
-        dept,
-            analytic_account_id,
-            credit_to,
-            wip_account,
-            journal_id,
-            total_credit,
-            actual_apv_date
-        from 
-        ranked)
-        , debit_credit_DIST as(
-        select
-        fem.accrual_id,
-        fem.distribution_percentage,
-    	case when sign(fem.total_credit) = -1 then fem.credit_final else 0::numeric end debit,
-	case when sign(fem.total_credit) = -1 then 0::numeric else fem.credit_final end credit,
-        fem.dept_group,
-            fem.dept,
-            fem.analytic_account_id,
-             fem.credit_to account_id,
-            fem.wip_account,
-            fem.journal_id,
-            fem.total_credit,
-            fem.actual_apv_date
-        from
-        final_DEPT_DIST fem
-        union all
-        select
-        distinct
-        ra.accrual_id,
-        0::numeric distribution_percentage,
-        case when sign(ra.total_credit) = -1 then 0::numeric else ra.total_credit end debit,
-        case when sign(ra.total_credit) = -1 then abs(ra.total_credit) else 0::numeric end credit,
-        '' dept_group,
-       '' dept,
-            null::integer analytic_account_id,
-             ra.debit_to account_id,
-             null::integer wip_account,
-             ra.journal_id,
-             ra.total_credit,
-             ra.actual_apv_date
-        from
-        reversed_accrual ra
+        , reversed_accrual as(
+            select maa.id accrual_id,
+            maa.total_diff total_credit,
+            maad.distribution_percentage,
+            trunc(ABS(maa.total_diff) * (maad.distribution_percentage/100),2) allocation_trunc,
+            ABS(maa.total_diff) * (maad.distribution_percentage/100) allocation,
+                sum(trunc(ABS(maa.total_diff) * (maad.distribution_percentage/100),2)) over (partition by MAA.ID) total_allocation_trunc,
+                    sum(ABS(maa.total_diff) * (maad.distribution_percentage/100)) over (partition by MAA.ID) total_allocation,
+                    '' dept_group,
+                    '' dept_group_id,
+                    maad.analytic_account dept,
+                    maad.analytic_account_id,
+                    maa.credit_to debit_to,
+                    maad.account_id credit_to,
+                    MAAD.WIP_ACCOUNT_ID wip_account,
+                    maa.journal_id,
+                    maa.actual_apv_date
+            from maa
+            join M_ACC_ACCRUAL_DIST maad on  maad.accrual_id = maa.id
+            where maa.id =$accrual_id and maad.distribution_percentage is not null
             )
-        select 
-        je.id accrual_id,
-        aj.name journal,
-         dcem.journal_id,
-        AA.CODE ACCOUNT_CODE,
-        DCEM.account_id,
-        dcem.actual_apv_date,
-        dcem.dept,
-        dcem.distribution_percentage,
-        dcem.debit,
-        dcem.credit,
-        dcem.analytic_account_id,
-        split_part(dcem.dept,' ', 1) AA_CODE,
-        case when split_part(dcem.dept,' ', 1) = '8120' then 'DIE SALES' 
-                    when split_part(dcem.dept,' ', 1) = '8300' then 'TOs' 
-                    when split_part(dcem.dept,' ', 1) = '8310' then 'SOT' 
-                    when split_part(dcem.dept,' ', 1) = '8100' then 'HERMETICS'
-                    when split_part(dcem.dept,' ', 1) = '8110' then 'MODULES'
-                end sbu,
-        REPLACE(dcem.dept, '''', '''''') ANALYTIC_ACCOUNT,
-        DCEM.DEPT_GROUP,
-        dcem.wip_account wip_account_id,
-        dcem.total_credit,
-        $apv_id actual_apv_id
-        from
-        debit_credit_DIST dcem
-        join m_acC_accrual je on je.id = dcem.accrual_id
-        LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
-        left join account_journal aj on aj.id = dcem.journal_id
-        ORDER BY accrual_id";
+            , ranked as(
+                select
+        ra.accrual_id,
+            ra.total_credit,
+            ra.distribution_percentage,
+            ra.allocation - ra.allocation_trunc allocation_diff,
+            ra.allocation_trunc,
+            ((ra.total_allocation - ra.total_allocation_trunc)/0.01)::integer rows_to_adjust,
+            ROW_NUMBER() OVER (PARTITION BY ra.accrual_id ORDER BY ra.allocation - ra.allocation_trunc DESC) AS rn,
+            ra.dept_group,
+            ra.dept_group_ID,
+            ra.dept,
+                    ra.analytic_account_id,
+                        ra.credit_to,
+                        ra.wip_account,
+                        ra.journal_id,
+                        ra.actual_apv_date
+            from reversed_accrual ra
+            )
+            , final_DEPT_DIST as (
+            select 
+            accrual_id,
+            distribution_percentage,
+             CASE 
+                    WHEN rn <= rows_to_adjust THEN allocation_trunc + 0.01
+                    ELSE allocation_trunc
+                END AS credit_final,
+            dept_group,
+            dept_group_ID,
+            dept,
+                analytic_account_id,
+                credit_to,
+                wip_account,
+                journal_id,
+                total_credit,
+                actual_apv_date
+            from 
+            ranked)
+            , debit_credit_DIST as(
+            select
+            fem.accrual_id,
+            fem.distribution_percentage,
+            case when sign(fem.total_credit) = -1 then fem.credit_final else 0::numeric end debit,
+        case when sign(fem.total_credit) = -1 then 0::numeric else fem.credit_final end credit,
+            fem.dept_group,
+                fem.dept,
+                fem.analytic_account_id,
+                 fem.credit_to account_id,
+                fem.wip_account,
+                fem.journal_id,
+                fem.total_credit,
+                fem.actual_apv_date
+            from
+            final_DEPT_DIST fem
+            union all
+            select
+            distinct
+            ra.accrual_id,
+            0::numeric distribution_percentage,
+            case when sign(ra.total_credit) = -1 then 0::numeric else ra.total_credit end debit,
+            case when sign(ra.total_credit) = -1 then abs(ra.total_credit) else 0::numeric end credit,
+            '' dept_group,
+           '' dept,
+                null::integer analytic_account_id,
+                 ra.debit_to account_id,
+                 null::integer wip_account,
+                 ra.journal_id,
+                 ra.total_credit,
+                 ra.actual_apv_date
+            from
+            reversed_accrual ra
+                )
+            select 
+            je.id accrual_id,
+            aj.name journal,
+             dcem.journal_id,
+            AA.CODE ACCOUNT_CODE,
+            DCEM.account_id,
+            dcem.actual_apv_date,
+            dcem.dept,
+            dcem.distribution_percentage,
+            dcem.debit,
+            dcem.credit,
+            dcem.analytic_account_id,
+            split_part(dcem.dept,' ', 1) AA_CODE,
+            case when split_part(dcem.dept,' ', 1) = '8120' then 'DIE SALES' 
+                        when split_part(dcem.dept,' ', 1) = '8300' then 'TOs' 
+                        when split_part(dcem.dept,' ', 1) = '8310' then 'SOT' 
+                        when split_part(dcem.dept,' ', 1) = '8100' then 'HERMETICS'
+                        when split_part(dcem.dept,' ', 1) = '8110' then 'MODULES'
+                    end sbu,
+            REPLACE(dcem.dept, '''', '''''') ANALYTIC_ACCOUNT,
+            DCEM.DEPT_GROUP,
+            dcem.wip_account wip_account_id,
+            dcem.total_credit,
+            $apv_id actual_apv_id
+            from
+            debit_credit_DIST dcem
+            join m_acC_accrual je on je.id = dcem.accrual_id
+            LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
+            left join account_journal aj on aj.id = dcem.journal_id
+            ORDER BY accrual_id";
     // echo $q;
     // exit;
 
@@ -298,15 +298,13 @@ function insertToWipReversal($accrual_id)
 	case when aad.debit is not null then 1 else 0 end is_debit,
     aad.date actual_apv_date
     from 
-    m_acc_date_range adr
-        join M_ACC_ACCRUAL maa on maa.date_range_id = adr.ID
+    m_acc_month adr
+        join M_ACC_ACCRUAL maa on maa.month_id = adr.ID
         join M_ACC_REVERSAL aad on aad.accrual_id = maa.id
     join account_analytic_account aaa on aaa.id =aad.analytic_account_id
     join m_acc_depARTMENT_groups adg on adg.id = aaa.m_acc_group_id
-   -- join m_acc_dist_mo adm on adm.sbu =aad.sbu
-  --  JOIN ACCOUNT_ACCOUNT   AA ON AA.ID = aad.ACCOUNT_ID
-  -- JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =AA.m_acc_category_id
-    join m_acc_dist_mo adm on adm.sbu =aad.sbu and adr.id = adm.date_range_id
+
+    join m_acc_mo_wip adm on adm.sbu =aad.sbu and adr.id = adm.month_id and adm.from_date = maa.from_date and adm.to_date = maa.to_date
 		JOIN M_ACC_CATEGORY_ACCOUNTS   ACA ON ACA.ACCOUNT_ID = aad.ACCOUNT_ID and aca.Acc_category_id = maa.dist_categ_id 
 		JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.Acc_category_id
     where  

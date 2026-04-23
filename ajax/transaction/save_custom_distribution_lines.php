@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 
 $db = new Postgresql();
@@ -15,7 +16,8 @@ if (!$conn) {
 $input = json_decode(file_get_contents('php://input'), true);
 
 $move_id = isset($input['move_id']) ? trim($input['move_id']) : '';
-$rows    = isset($input['rows']) && is_array($input['rows']) ? $input['rows'] : [];
+$rows = isset($input['rows']) && is_array($input['rows']) ? $input['rows'] : [];
+$added_by  = $_SESSION['ppc']['emp_no'];
 // echo $move_id;
 // exit;
 
@@ -91,7 +93,8 @@ foreach ($rows as $r) {
                 analytic_account = $6,
                 account_id = $7,
                 account_name = $8,
-                move_id = $9
+                move_id = $9,
+                added_by = $10
             WHERE move_line_id = $1
         ";
 
@@ -104,7 +107,8 @@ foreach ($rows as $r) {
             $analytic_account,
             $account_id,
             $account_name,
-            $row_move_id
+            $row_move_id,
+            $added_by
         ));
 
         if (!$update_result) {
@@ -127,7 +131,8 @@ foreach ($rows as $r) {
                 analytic_account_id,
                 analytic_account,
                 account_id,
-                account_name
+                account_name,
+                added_by
             )
             VALUES (
                 $1,
@@ -138,7 +143,8 @@ foreach ($rows as $r) {
                 $6,
                 $7,
                 $8,
-                $9
+                $9,
+                $10
             )
         ";
 
@@ -151,7 +157,8 @@ foreach ($rows as $r) {
             $analytic_account_id,
             $analytic_account,
             $account_id,
-            $account_name
+            $account_name,
+            $added_by 
         ));
 
         if (!$insert_result) {

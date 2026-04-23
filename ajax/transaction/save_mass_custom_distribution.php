@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 
 $db = new Postgresql();
@@ -17,6 +18,7 @@ $input = json_decode(file_get_contents('php://input'), true);
 $from_date = isset($input['from_date']) ? trim($input['from_date']) : '';
 $to_date   = isset($input['to_date']) ? trim($input['to_date']) : '';
 $rows      = isset($input['rows']) ? $input['rows'] : [];
+$added_by  = $_SESSION['ppc']['emp_no'];
 
 if ($from_date === '' || $to_date === '' || empty($rows)) {
     echo json_encode([
@@ -61,7 +63,8 @@ foreach ($rows as $r) {
             SET from_date = $2,
                 to_date = $3,
                 total_amount = $4,
-                accounting_date = $5
+                accounting_date = $5,
+                added_by = $6
             WHERE move_id = $1
         ";
         $update_result = pg_query_params($conn, $update_sql, array(
@@ -69,7 +72,8 @@ foreach ($rows as $r) {
             $from_date,
             $to_date,
             $total_amount,
-            $accounting_date
+            $accounting_date,
+            $added_by
         ));
 
         if (!$update_result) {
@@ -87,13 +91,15 @@ foreach ($rows as $r) {
                 to_date,
                 total_amount,
                 accounting_date
+                added_by
             )
             VALUES (
                 $1,
                 $2,
                 $3,
                 $4,
-                $5
+                $5,
+                $6
             )
         ";
         $insert_result = pg_query_params($conn, $insert_sql, array(
@@ -101,7 +107,8 @@ foreach ($rows as $r) {
             $from_date,
             $to_date,
             $total_amount,
-            $accounting_date
+            $accounting_date,
+            $added_by
         ));
 
         if (!$insert_result) {

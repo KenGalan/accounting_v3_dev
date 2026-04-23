@@ -692,8 +692,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         // BUTTON NG ACCRUAL
         $('#btnInsertToOdoo').on('click', async function() {
             // fetchAccrual()
-            date_range_id = $(this).attr('data-id');
-
+            date_range_id = $(this).data('id');
+            // console.log(date_range_id)
 
             previewJournalEntries(date_range_id)
             $('#previewInsertToOdoo').modal('show');
@@ -2391,7 +2391,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             <button class="btn btn-primary btn-sm viewBtn"
                                 style="background-color: #7C7BAD !important"
                                 data-id="${row.id}"
-                                data-range-id="${row.date_range_id}"
+                                data-range-id="${date_range_id}"
                                 >
                             View
                         </button>

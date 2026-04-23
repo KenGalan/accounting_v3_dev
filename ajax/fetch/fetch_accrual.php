@@ -29,7 +29,7 @@ $year_month = isset($_POST['year_month']) ? $_POST['year_month'] : '';
 // 	where not adr.is_all_reversed and adr.active
 // ) A ON TO_CHAR(A.MIN_DATE,'YYYY-MM') = ADR.YEAR_MONTH";
 if ($year_month != '') {
-    $q = "select distinct  mam.id,mam.year_month, maa.active acc_active
+    $q = "select distinct  mam.*, maa.active acc_active
     ,case when distributed_account_move_id is not null then 'True' else 'False' end as odoo_inserted
                ,case when actual_apv_id is not null then 'True' else 'False' end as reversed
              ,case when reverse_account_move_id is not null then 'True' else 'False' end as rev_odoo_inserted
@@ -39,7 +39,7 @@ if ($year_month != '') {
     and mam.active
     order by acc_active";
 } else {
-    $q = "select distinct  mam.id,mam.year_month, maa.active acc_active
+    $q = "select distinct  mam.*, maa.active acc_active
 ,case when distributed_account_move_id is not null then 'True' else 'False' end as odoo_inserted
  		  ,case when actual_apv_id is not null then 'True' else 'False' end as reversed
 		 ,case when reverse_account_move_id is not null then 'True' else 'False' end as rev_odoo_inserted
@@ -104,65 +104,69 @@ $res = $db->fetchAll($query);
 
 
 
-// $queryReversal = "
-// WITH acdr AS (
-//     SELECT ADR.* FROM
-// 	M_ACC_DATE_RANGE ADR
-// 	JOIN
-// 	(
-// 		select 
-// 		MIN(to_date(year_month, 'YYYY-MM')) MIN_DATE
-// 		from
-// 		m_acc_date_range adr
-// 		left join (
-// 			select distinct date_range_id 
-// 			from m_acc_accrual 
-// 			where not is_reversed
-// 			) nr on nr.date_range_id = adr.id
-//             where not adr.is_all_reversed
-// 	) A ON TO_CHAR(A.MIN_DATE,'YYYY-MM') = ADR.YEAR_MONTH
-//     where not adr.is_all_reversed
-// )
-// SELECT
-//     ma.id,
-//     acdr.is_dept_distributed,
-//     aa.code || ' ' || aa.name AS credit_to,
-//     aa.id AS credit_to_id,
-//     ma.total_accrual_value,
-//     mct.acc_category AS distribution_category,
-//     mct.id AS category_id,
-//     ma.date_range_id,
-//     string_agg(DISTINCT aa2.code || ' ' || aa2.name, ', ') AS debit_to,
-// 	am.name apv,
-// 	am.id apv_id
-// FROM m_acc_accrual ma
-// JOIN account_account aa ON aa.id = ma.credit_to
-// JOIN m_acc_category_tbl mct ON mct.id = ma.dist_categ_id
-// JOIN acdr ON acdr.id = ma.date_range_id
-// LEFT JOIN M_ACC_COST_DISTRIBUTION acd ON acd.m_acc_category_id = ma.dist_categ_id
-// LEFT JOIN account_account aa2 ON aa2.id = acd.debit_to
-// left join account_move am on am.id = ma.actual_apv_id
-// WHERE ma.active
-// and ma.distributed_account_move_id is not null
-// GROUP BY
-//     ma.id,
-//     mct.id,
-//     aa.id,
-//     aa.code,
-//     aa.name,
-//     ma.total_accrual_value,
-//     mct.acc_category,
-// 	am.name,
-// 	am.id,
-//     ma.date_range_id,
-//     acdr.is_dept_distributed
-// ";
-// $resReversal = $db->fetchAll($queryReversal);
+$queryReversal = "
+WITH acdr AS (
+    SELECT ADR.* FROM
+	M_ACC_MONTH ADR
+	JOIN
+	(
+		select 
+		MIN(to_date(year_month, 'YYYY-MM')) MIN_DATE
+		from
+		m_acc_month adr
+		left join (
+			select distinct month_id 
+			from m_acc_accrual 
+			where not is_reversed
+			) nr on nr.month_id = adr.id
+            where not adr.is_all_reversed
+	) A ON TO_CHAR(A.MIN_DATE,'YYYY-MM') = ADR.YEAR_MONTH
+    where not adr.is_all_reversed
+)
+SELECT
+    ma.id,
+    ma.from_date,
+    ma.to_date,
+    acdr.is_dept_distributed,
+    aa.code || ' ' || aa.name AS credit_to,
+    aa.id AS credit_to_id,
+    ma.total_accrual_value,
+    mct.acc_category AS distribution_category,
+    mct.id AS category_id,
+    ma.month_id,
+    string_agg(DISTINCT aa2.code || ' ' || aa2.name, ', ') AS debit_to,
+	am.name apv,
+	am.id apv_id
+FROM m_acc_accrual ma
+JOIN account_account aa ON aa.id = ma.credit_to
+JOIN m_acc_category_tbl mct ON mct.id = ma.dist_categ_id
+JOIN acdr ON acdr.id = ma.month_id
+LEFT JOIN M_ACC_COST_DISTRIBUTION acd ON acd.m_acc_category_id = ma.dist_categ_id
+LEFT JOIN account_account aa2 ON aa2.id = acd.debit_to
+left join account_move am on am.id = ma.actual_apv_id
+WHERE ma.active
+and ma.distributed_account_move_id is not null
+GROUP BY
+    ma.id,
+    ma.from_date,
+    ma.to_date,
+    mct.id,
+    aa.id,
+    aa.code,
+    aa.name,
+    ma.total_accrual_value,
+    mct.acc_category,
+	am.name,
+	am.id,
+    ma.month_id,
+    acdr.is_dept_distributed
+";
+$resReversal = $db->fetchAll($queryReversal);
 
 $data = [
     'date_range' => $resulta,
     'active_accrual' => $res,
-    // 'reversal_accrual' => $resReversal
+    'reversal_accrual' => $resReversal
 ];
 
 

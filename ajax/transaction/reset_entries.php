@@ -44,12 +44,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $delete4 = "DELETE FROM  M_ACC_ACCRUAL_DIST";
         $delete5 = "DELETE FROM m_acc_to_wip_reversal";
         $delete6 = "DELETE FROM M_ACC_DIST_MO_LINES";
+        $delete7 = "DELETE FROM M_ACC_MO_WIP";
+        $delete8 = "DELETE FROM M_ACC_MO_WIP_LINE";
         $db_ken->query($delete1);
         $db_ken->query($delete2);
         $db_ken->query($delete3);
         $db_ken->query($delete4);
         $db_ken->query($delete5);
         $db_ken->query($delete6);
+        $db_ken->query($delete7);
+        $db_ken->query($delete8);
 
         $updateAmId = "UPDATE M_ACC_ACCRUAL SET IS_REVERSED = false, distributed_account_move_id = NULL, wip_account_move_id = NULL, reverse_account_move_id = NULL,  wip_reverse_account_move_id = NULL, total_reverse_value = NULL, actual_apv_id = NULL";
         $db_ken->query($updateAmId);
@@ -57,6 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $updateDateRange = "UPDATE M_ACC_DATE_RANGE SET IS_ALL_REVERSED = false, IS_DEPT_DISTRIBUTED = false";
         $db_ken->query($updateDateRange);
+
+        $updateMonth = "UPDATE M_ACC_MONTH SET IS_ALL_REVERSED = false, IS_DEPT_DISTRIBUTED = false";
+        $db_ken->query($updateMonth);
 
         $db_ken->commit();
         // echo "All accruals and lines inserted successfully.";

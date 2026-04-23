@@ -137,7 +137,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
     <div class="container-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
     <input type="month" name="month_year" id="yearMonthSelect" class="form-control" style="width:250px;">
-    <button class="btn btn-success" id="runBtnDist" disabled>RUN PAYROLL DISTTRIBUTION</button>
+    <button class="btn btn-success" id="runBtnDist" style="display: none;">RUN DISTTRIBUTION</button>
     </div>
 
     <div id="massDateRangeSection" style="display:none; float:right; margin-bottom:15px;">
@@ -219,7 +219,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         <div id="distributionEntriesContainer" style="display:none;">
                          <button class="selectSbu btn btn-primary" style="display: none;">SELECT SBU</button>
 
-                        <div id="sbuContainer" style="display:none; margin-top:10px;">
+                        <div id="sbuContainer" style="display:none; margin-top:10px; width: 45%;">
                             <div style="display:flex; gap:10px; align-items:flex-start;">
                                 <select id="sbuSelect" class="form-control" multiple style="width:300px;">
                                     <!-- <option value="">Select SBU</option> -->
@@ -1041,12 +1041,12 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         init();
 
 
-
         $("#yearMonthSelect").on("change", function() {
             let yearMonth = $(this).val();
             console.log(yearMonth)
             if (!yearMonth) return;
             fetchAccrual(yearMonth)
+            $('#runBtnDist').show();
         });
 
 
@@ -1197,6 +1197,39 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
         }); // END
 
+        //  $('#runBtnDist').on('click', function() { 
+        //     let cust_dist_id = 1
+        //     let cust_dist_line_id = 62
+        //     let totalAmount = $(this).data("total-amount");
+        //     let debit = 4716.56;
+        //     let credit = 0;
+        //     let analytic_account_id = $(this).data("id");
+
+        //     if (!cust_dist_id || !cust_dist_line_id) {
+        //         swal("Error", "Missing distribution ID or line ID.", "error");
+        //         return;
+        //     }
+        //     // $.ajax({
+        //     //     url: "ajax/transaction/run_payroll_entries.php",
+        //     //     type: 'post',
+        //     //     dataType: "json", 
+        //     //     data: {
+        //     //         cust_dist_id: cust_dist_id,
+        //     //         cust_dist_line_id: cust_dist_line_id,
+        //     //         totalAmount: totalAmount,
+        //     //         debit: debit,
+        //     //         credit: credit,
+        //     //         analytic_account_id: analytic_account_id
+        //     //     },
+        //     //     success: function(data) {
+        //     //         stopLoading('body')
+        //     //         swal.close();
+        //     //         init()
+        //     //     }
+        //     // });
+            
+
+        // });
 
         function formatInputDate(dateStr) {
             if (!dateStr) return '';

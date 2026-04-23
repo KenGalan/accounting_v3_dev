@@ -149,6 +149,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 <th>Total Accrual Value</th>
                 <th>AVP</th>
                 <th>Dist Category</th>
+                <th>Accrual Date Range</th>
                 <th>Debit Account</th>
                 <!-- <th>Action</th> -->
                 <!-- <th>Account Name</th>
@@ -330,7 +331,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             avp_global = await fetchAPV();
 
             initDistTable();
-            fetchAccrual();
+            // fetchAccrual();
             await fetchAccrual();
 
             // startLoading('body');
@@ -339,7 +340,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
         window.onload = function() {
             init();
-        }; 
+        };
 
         let revWipTable = $("#revWipTable").DataTable({
             pageLength: 5,
@@ -1006,7 +1007,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         distTable.columns.adjust().draw(false);
 
                         window.fullData = data['reversal_accrual'];
-                    } 
+                    }
                 },
                 complete: function() {
                     stopLoading('#distTable');
@@ -1211,9 +1212,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                 console.log("row.credit_to_id:", row.credit_to_id);
                                 console.log("avp_global:", avp_global);
 
-                                const filtered = Array.isArray(avp_global)
-                                    ? avp_global.filter(avp => Number(row.credit_to_id) === Number(avp.account_id))
-                                    : [];  
+                                const filtered = Array.isArray(avp_global) ?
+                                    avp_global.filter(avp => Number(row.credit_to_id) === Number(avp.account_id)) : [];
 
                                 console.log("Filtered AVPs:", filtered);
 
@@ -1230,7 +1230,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                         </select>
                                     </div>
                                 `;
-                            } 
+                            }
 
                             return html;
                         }
@@ -1256,6 +1256,22 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
 
                             return html;
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function(row) {
+
+                            let from = row.from_date ? formatDate(row.from_date) : '';
+                            let to = row.to_date ? formatDate(row.to_date) : '';
+
+                            if (!from && !to) return '';
+
+                            return `
+                                <span class="badge bg-blue" style="background-color: #7C7BAD !important; color:#ffffff !important; font-size: 10pt;">
+                                    ${from}${from && to ? ' → ' : ''}${to}
+                                </span>
+                            `;
                         }
                     },
                     {
@@ -1390,6 +1406,18 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
         function stopLoading(selector) {
             $(selector).waitMe('hide');
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+
+            let d = new Date(dateStr);
+
+            return new Intl.DateTimeFormat('en-PH', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            }).format(d);
         }
 
     });
