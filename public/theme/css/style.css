@@ -2529,7 +2529,14 @@ button.active {
     margin-left: 20px; } }
 
 /* General ===================================== */
+.theme-deep-purple{
+  zoom:85%;
+}
+.w-100{
+  width: 100% !important;
+}
 body {
+  
   background-color: #e9e9e9;
   -moz-transition: all 0.5s;
   -o-transition: all 0.5s;

@@ -147,7 +147,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 <th>Credit Account</th>
 
                 <th>Total Accrual Value</th>
-                <th>AVP</th>
+                <th>Reversal Option</th>
                 <th>Dist Category</th>
                 <th>Accrual Date Range</th>
                 <th>Debit Account</th>
@@ -542,21 +542,33 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         }); // END
 
         $('#distTable').on('change', '.row-checkbox', function() {
-            //    if($this.prop('checked'))
-            let $input = $(this).closest('tr').find('.avpSelect');
+            let $row = $(this).closest('tr');
+            let $input = $row.find('.avpSelect');
+            let $auto = $row.find('.auto_insert_switch');
+            let $note = $row.find('.reversal-note')
 
-            // Enable or disable based on checkbox
+            let isChecked = $(this).is(':checked');
+            let isAuto = $auto.is(':checked');
 
-            if ($(this).is(':checked')) {
-                $input.prop('disabled', !$(this).is(':checked'));
+            $auto.prop('disabled', !isChecked);
+            $input.prop('disabled', !isChecked || (isChecked && isAuto) ? true : false);
+
+        })
+
+        $('#distTable').on('change', '.auto_insert_switch', function() {
+            let $row = $(this).closest('tr');
+            let isChecked = $(this).is(':checked');
+            let $inputDiv = $row.find('.avpWrap');
+            let $input = $row.find('.avpSelect');
+            let $note = $row.find('.reversal-note')
+            if (isChecked) {
+                $inputDiv.hide();
+                $note.show()
             } else {
-
-                const original = $input.data('original');
-                $input.val(original)
-                    .prop('disabled', true)
-                    .trigger('change.select2');
+                $inputDiv.show();
+                $note.hide()
             }
-
+            $input.prop('disabled', isChecked ? true : false);
 
         })
 
@@ -944,12 +956,14 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 let $row = $(this).closest('tr');
                 let id = $(this).data('id');
                 let selectedValue = $row.find('.avpSelect').val();
+                let standardReverse = $row.find('.auto_insert_switch').prop('checked')
 
                 let apvTotal = $row.find('.avpSelect option:selected').attr('data-id');
                 let distTemplate = $row.find('.disttemplateSelect option:selected').text();
                 let accrualTotal = $row.find('.distribution-input').val();
 
-                if (selectedValue === '') {
+
+                if (selectedValue === '' && !standardReverse) {
                     // Show error message
                     alert(`Please select a value for ID ${id}`);
                     hasError = true;
@@ -960,8 +974,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     accrual_id: id,
                     accrual_total: accrualTotal,
                     dist_template: distTemplate,
-                    apv_id: selectedValue,
-                    apv_total: apvTotal,
+                    standardReverse: standardReverse,
+                    apv_id: standardReverse ? null : selectedValue,
+                    apv_total: standardReverse ? null : apvTotal,
                     action: ''
                 });
             });
@@ -1100,7 +1115,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 pageLength: 5,
                 rowCallback: function(row, data, index) {
                     // data = row data object
-                    if (data.apv !== null && data.apv !== '') {
+                    if (data.is_reversed !== null && data.is_reversed == 't') {
                         $(row).addClass('row-green').css('background-color', '#4CAF50'); // orange
                     }
                 },
@@ -1148,7 +1163,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         render: function(data, type, row) {
 
                             const checkboxId = `selectRow_${row.id}`;
-                            if (row.apv_id) {
+                            if (row.is_reversed == 't') {
 
                                 return '';
 
@@ -1202,11 +1217,26 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                             if (row.apv) {
                                 html = `<p>${row.apv}</p>`;
+                            } else if (row.is_reversed == 't' && !row.apv) {
+                                html = `      <label for="auto-switch">Standard Reversal</label>
+            <label class="switch">
+                <input name="auto-switch"  type="checkbox" class="auto_insert_switch" disabled checked>
+                <span class="slider"></span>
+            </label> `;
                             } else {
                                 html = `
+                                <div style="display:flex; flex-direction:column">
+                                <label for="auto-switch">Standard Reversal</label>
+            <label class="switch">
+                <input name="auto-switch"  type="checkbox" class="auto_insert_switch" disabled>
+                <span class="slider"></span>
+            </label>
+                               
                                     <div class="avpWrap" style="display:flex; align-items:center; gap:8px;">
+                                    
                                         <select class="avpSelect" data-id="${row.id}" disabled>
                                             <option value="">Select APV</option>
+                                       
                                 `;
 
                                 console.log("row.credit_to_id:", row.credit_to_id);
@@ -1228,7 +1258,11 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                                 html += `
                                         </select>
-                                    </div>
+                                        
+                                    </div> </div>
+                                    <div style="padding:10px; background:#e7f3ff; border-left:4px solid #2196F3; display:none; min-width:250px;" class="reversal-note">
+  <strong>ℹ️ Note:</strong> This will create a reversal entry where the debit and credit are switched.
+</div>
                                 `;
                             }
 

@@ -18,21 +18,228 @@ $input = file_get_contents("php://input");
 // Decode JSON to associative array
 $data = json_decode($input, true);
 
-// Make sure acc_data exists
-// $acc_data = $data['acc_data'] ? $data['acc_data']  : [];
-// echo $data;
-// exit;
+
 foreach ($data  as $row) {
+    // echo '<pre>';
     // var_dump($data);
     // exit;
     $accrual_id = intval($row['accrual_id']);
     $apv_id     = intval($row['apv_id']);
+    $std_reverse = $row['standardReverse'];
+    $date = new DateTime();
+    $formatted_date = $date->format('Y-m-d');
+    if ($std_reverse) {
+        $revAM = "select
+        am.id am_id,
+      am.name,
+      am.date,
+      am.ref,
+      am.journal_id,
+      am.amount_total,
+      am.amount_total_signed,
+      am.total_usd,
+      am.TOTAL_AMOUNT_WITHOUT_MONETARY,
+      am.GET_TOTAL_IN_DEB_CRED,
+      am.FOREX_AND_AMM_VAL,
+      am.GETTING_TOTAL_OF_DEBIT_CREDIT_VAL,
+      am.JOURNAL_NAME,
+      '' status
+      from account_move am
+      join m_acc_accrual ma on ma.distributed_account_move_id = am.id AND MA.IS_ACCRUAL
+      where ma.id = $accrual_id
+      union all
+      select
+      am.id am_id,
+      am.name,
+      am.date,
+      am.ref,
+      am.journal_id,
+      am.amount_total,
+      am.amount_total_signed,
+      am.total_usd,
+      am.TOTAL_AMOUNT_WITHOUT_MONETARY,
+      am.GET_TOTAL_IN_DEB_CRED,
+      am.FOREX_AND_AMM_VAL,
+      am.GETTING_TOTAL_OF_DEBIT_CREDIT_VAL,
+      am.JOURNAL_NAME,
+      'cogs' status
+      from account_move am
+      join m_acc_accrual ma on ma.wip_account_move_id = am.id AND MA.IS_ACCRUAL
+      where ma.id = $accrual_id";
+
+        $resRevAM = $db_ken->fetchAll($revAM);
+
+        if ($resRevAM) {
+
+            foreach ($resRevAM as $am) {
+                $am_id = $am['am_id'];
+                $is_cogs = $am['status'] == 'cogs' ? 'cogs' : '';
+                $amount_total = $am['amount_total'];
+                $am_entries = [
+                    'NAME' =>    '/',
+                    // 'DATE'    => $last_date_of_month,
+                    'DATE' => $formatted_date,
+                    'REF' =>    '/sample ' . $is_cogs . ' Reversal of ' . $am['name'],
+                    'STATE' =>    'draft',
+                    'TYPE'    => 'entry',
+                    'TO_CHECK' =>    'false', //boolean
+                    'JOURNAL_ID' =>    $am['journal_id'],
+                    'COMPANY_ID' =>    1,
+                    'CURRENCY_ID' =>    36,
+                    'AMOUNT_UNTAXED' => 0.000,
+                    'AMOUNT_TAX' => 0.000,
+                    'AMOUNT_TOTAL' =>     $amount_total,
+                    'AMOUNT_RESIDUAL' => 0,
+                    'AMOUNT_UNTAXED_SIGNED' => 0,
+                    'AMOUNT_TAX_SIGNED' =>    0,
+                    'AMOUNT_TOTAL_SIGNED' =>   $am['amount_total_signed'],
+                    'AMOUNT_RESIDUAL_SIGNED' =>    0,
+                    'AUTO_POST' =>    'false', //boolean
+                    'INVOICE_USER_ID' => 2,
+                    'INVOICE_SENT' => 'false', //boolean
+                    'INVOICE_INCOTERM_ID' => 6,
+                    'INVOICE_PARTNER_DISPLAY_NAME' => 'Created by: Administrator',
+                    'TEAM_ID' => 1,
+                    'DIVIDED_USD' => 0.000,
+                    'TOTAL_USD' =>  $am['total_usd'],
+                    'TOTAL_AMOUNT_WITHOUT_MONETARY' => $am['total_amount_without_monetary'],
+                    // word_move	?
+                    // word_move2	word of $amount_total
+                    'CURRENCY_NAME_HERE' => 'PHP',
+                    'GET_TOTAL_IN_DEB_CRED' => $am['get_total_in_deb_cred'],
+                    // add_percent	?
+                    // saving_forex_php_value	?
+                    // adding_usd_with_percent_value	?
+                    'FOREX_AND_AMM_VAL' => $am['forex_and_amm_val'],
+                    'GETTING_TOTAL_OF_DEBIT_CREDIT_VAL' => $am['getting_total_of_debit_credit_val'],
+                    // deduct_value	?
+                    // fetch_recheck_date	?
+                    // amm_usd_val	?
+                    // saving_forex_php_value_ap	?
+                    // word_for_journal_entries_val	word of $amount_total
+                    'IS_DEBIT_NOTE' => 'false', //boolean
+                    'IS_MUI_CIP_TRANSACTION' => 'false', //boolean
+                    'TRANSFER_STATUS' => 'pending',
+                    'PAYABLE_VOUCHER_GENERATED' => 'false', //boolean
+                    'JOURNAL_NAME' => $am['journal_name'],
+                    'ALREADY_GENERATED_COGS' => 'false' //boolean
+                ];
+
+                $new_am_id = $db_ken->insert_get_id('ACCOUNT_MOVE', $am_entries, 'id');
 
 
-    $q = "with maa as(
+
+                if ($is_cogs == 'cogs') {
+                    $qUpdateAccrual = "UPDATE M_ACC_ACCRUAL SET wip_reverse_account_move_id =$1 WHERE ID = $2";
+                } else {
+                    $qUpdateAccrual = "UPDATE M_ACC_ACCRUAL SET reverse_account_move_id =$1 WHERE ID = $2";
+                    $updateAccrualQ = "UPDATE M_ACC_ACCRUAL SET TOTAL_REVERSE_VALUE = ABS($amount_total), is_reversed =true WHERE ID =$accrual_id ";
+                    $db->query($updateAccrualQ);
+                }
+
+                $db_ken->query(
+                    $qUpdateAccrual,
+                    [$new_am_id, $accrual_id]
+                );
+
+
+                $revAML = "
+                select
+                aml.id aml_id,
+                aml.date,
+                aml.ref,
+                aml.journal_id,
+                aml.ACCOUNT_ROOT_ID,
+                aml.account_id,
+                aml.credit debit,
+                aml.debit credit,
+                aml.ANALYTIC_ACCOUNT_ID,
+                aml.AMOUNT_RESIDUAL,
+                aml.DEBIT_DATA_PAYABLE
+                from account_move am
+                join account_move_line aml on aml.move_id = am.id
+                --join m_acc_accrual ma on ma.distributed_account_move_id = am.id
+                where am.id = $am_id
+                ";
+
+                $resRevAML = $db_ken->fetchAll($revAML);
+
+
+
+                foreach ($resRevAML as $aml) {
+                    $balance = $aml['debit'] && $aml['debit'] > 0 ?   $aml['debit'] :  $aml['credit'] * -1;
+                    $analytic_account_id = $aml['analytic_account_id'];
+                    $old_aml_id = $aml['aml_id'];
+                    $aml_entries = [
+                        'MOVE_ID' =>    $new_am_id,
+                        'MOVE_NAME' => '/',
+                        // 'DATE' => $last_date_of_month,
+                        'DATE' => $formatted_date,
+                        'ref'    => '/sample Reversal of ' . $am['name'],
+                        'PARENT_STATE' => 'draft',
+                        'JOURNAL_ID' => $aml['journal_id'],
+                        'COMPANY_ID' => 1,
+                        'COMPANY_CURRENCY_ID' => 36,
+                        'ACCOUNT_INTERNAL_TYPE' => 'other',
+                        'ACCOUNT_ROOT_ID' => $aml['account_root_id'],
+                        'ACCOUNT_ID' => $aml['account_id'],
+                        // sequence	?
+                        'QUANTITY' =>    1,
+                        'DISCOUNT' => 0.00,
+                        'DEBIT' =>    $aml['debit'],
+                        'CREDIT' =>    $aml['credit'],
+                        'BALANCE' =>    $balance,
+                        'RECONCILED' =>    'false', //boolean
+                        'BLOCKED' => 'false', //boolean
+                        'TAX_EXIGIBLE' => 'true', //boolean
+                        'AMOUNT_RESIDUAL' => $aml['amount_residual'],
+                        'AMOUNT_RESIDUAL_CURRENCY' => 0.0,
+                        'ANALYTIC_ACCOUNT_ID' => $analytic_account_id ? $analytic_account_id : null,
+                        'ASSET_MRR' => 0.00,
+                        'DEBIT_DATA_PAYABLE' => $aml['debit_data_payable']
+                        // 'DEBIT_DATA' => $amount_total / $php_rate,
+                        // bcdl_amount	?
+                    ];
+
+                    $new_aml_id = $db_ken->insert_get_id('ACCOUNT_MOVE_LINE', $aml_entries, 'id');
+
+
+                    $getMos = "select * from ACCOUNT_MOVE_LINE_MO_LINK where account_move_line_id = $old_aml_id";
+                    $resMos = $db_ken->fetchAll($getMos);
+                    foreach ($resMos as $mos) {
+
+
+                        $mo_link_entries = [
+                            'PRODUCTION_ID' =>    $mos['production_id'],
+                            'ACCOUNT_MOVE_LINE_ID' => $new_aml_id,
+                            'PERCENT' =>  $mos['percent'],
+                            'VALUE' => $mos['value']
+                        ];
+
+                        $db_ken->insert('ACCOUNT_MOVE_LINE_MO_LINK', $mo_link_entries);
+                    }
+                }
+            }
+
+            // $qCount = "select count(id) count from m_acc_accrual maa where reverse_account_move_id is null";
+            // $qResCount = $db_ken->fetchRow($qCount);
+
+            // if ($qResCount && $qResCount['count'] == 0) {
+            //     $qUpdateRangeStatus = "UPDATE M_ACC_MONTH SET is_all_reversed =$1 WHERE ID = $2";
+            //     // }
+
+            //     $db_ken->query(
+            //         $qUpdateRangeStatus,
+            //         ['true', $month_id]
+            //     );
+            // }
+        }
+        //baliktadin ang debit credit
+    } else {
+        $q = "with maa as(
         select maa.total_accrual_value - sum(debit) total_diff,maa.*,am.date actual_apv_date from account_move am
         join  account_move_line aml on aml.move_id = am.id
-        join m_acc_accrual maa on maa.credit_to = aml.account_id
+        join m_acc_accrual maa on maa.credit_to = aml.account_id AND MAA.IS_ACCRUAL
         where am.id = $apv_id and maa.id =$accrual_id
         group by
         maa.total_accrual_value, maa.id,am.date
@@ -156,120 +363,123 @@ foreach ($data  as $row) {
             $apv_id actual_apv_id
             from
             debit_credit_DIST dcem
-            join m_acC_accrual je on je.id = dcem.accrual_id
+            join m_acC_accrual je on je.id = dcem.accrual_id AND JE.IS_ACCRUAL
             LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
             left join account_journal aj on aj.id = dcem.journal_id
             ORDER BY accrual_id";
-    // echo $q;
-    // exit;
-
-    $result = $db_ken->fetchAll($q);
-    // echo '<pre>';
-    // echo json_encode($result);
-    // exit;
-
-    if ($result) {
-
-        // $db->query("UPDATE M_ACC_DATE_RANGE SET is_dept_distributed = TRUE WHERE ID = $month_id");
-
-        $old_accrual_id = '';
 
 
-        //USE INSERT GET ID
-        foreach ($result as $item) {
-            $total_credit = $item['total_credit'];
-            $accrual_id = $item['accrual_id'];
-            $account_code = $item['account_code'];
-            $account_id = $item['account_id'];
-            $analytic_account = $item['analytic_account'];
-            $analytic_account_id = $item['analytic_account_id'] != '' && $item['analytic_account_id'] ? $item['analytic_account_id']  : 'NULL::INTEGER';
-            $distribution_percentage = $item['distribution_percentage'] != '' && $item['distribution_percentage']  ? $item['distribution_percentage'] : 'NULL::NUMERIC';
-            $debit = $item['debit'] != '' && $item['debit']  ? $item['debit'] : 'NULL::NUMERIC';
-            $credit = $item['credit'] != '' && $item['credit']  ? $item['credit'] : 'NULL::NUMERIC';
-            // $account_move_date = $item['date'];
-            $sbu = $item['sbu'];
-            $wip_account_id = $item['wip_account_id'] ?: 'NULL::INTEGER';
-            $actual_apv_id = $item['actual_apv_id'] != '' &&  $item['actual_apv_id'] ?  $item['actual_apv_id'] : 'NULL::INTEGER';
-            $journal = $item['journal'];
-            $journal_id = $item['journal_id'] != '' && $item['journal_id'] ? $item['journal_id'] : 'NULL::INTEGER';
-            $date = $item['actual_apv_date'];
-            // echo $credit;
-            // exit;
+        // echo $q;
+        // exit;
 
-            if ($accrual_id != (isset($old_accrual_id) ? $old_accrual_id : 0)) { // ← if this is not the same journal_entry
+        $result = $db_ken->fetchAll($q);
+        // echo '<pre>';
+        // echo json_encode($result);
+        // exit;
 
-                // if ((isset($old_accrual_id) ? $old_accrual_id : 0) != 0) {
+        if ($result) {
 
-                $updateAccrualQ = "UPDATE M_ACC_ACCRUAL SET TOTAL_REVERSE_VALUE = ABS($total_credit), ACTUAL_APV_ID = $actual_apv_id, is_reversed =true WHERE ID =$accrual_id ";
-                $db->query($updateAccrualQ);
+            // $db->query("UPDATE M_ACC_DATE_RANGE SET is_dept_distributed = TRUE WHERE ID = $month_id");
 
-                if ($old_accrual_id != 0) {
-                    // INSERT TO WIP
-                    $qToWipRev = insertToWipReversal($old_accrual_id);
-                    $resultToWipRev = $db_ken->fetchAll($qToWip);
+            $old_accrual_id = '';
 
-                    foreach ($resultToWipRev as $itemToWipRev) {
-                        $db_ken->insert('M_ACC_TO_WIP_REVERSAL', [
-                            'accrual_id' => $old_accrual_id,
-                            'ACCOUNT_CODE' => $itemToWip['account_code'],
-                            'ACCOUNT_ID' => $itemToWip['account_id'],
-                            'CREDIT_ACCOUNT_ID' => $itemToWip['credit_account_id'],
-                            'ANALYTIC_ACCOUNT' => $itemToWip['analytic_account'],
-                            'ANALYTIC_ACCOUNT_ID' => $itemToWip['analytic_account_id'] ?: null,
-                            'MOS' => $itemToWip['mos'],
-                            'DEBIT' => $itemToWip['debit'] ?: null,
-                            'CREDIT' => $itemToWip['credit'] ?: null,
-                            'ADDED_BY' => $user,
-                            'SBU' => $itemToWip['sbu'],
-                            'DATE' => "'$date'"
-                        ]);
+
+            //USE INSERT GET ID
+            foreach ($result as $item) {
+                $total_credit = $item['total_credit'];
+                $accrual_id = $item['accrual_id'];
+                $account_code = $item['account_code'];
+                $account_id = $item['account_id'];
+                $analytic_account = $item['analytic_account'];
+                $analytic_account_id = $item['analytic_account_id'] != '' && $item['analytic_account_id'] ? $item['analytic_account_id']  : 'NULL::INTEGER';
+                $distribution_percentage = $item['distribution_percentage'] != '' && $item['distribution_percentage']  ? $item['distribution_percentage'] : 'NULL::NUMERIC';
+                $debit = $item['debit'] != '' && $item['debit']  ? $item['debit'] : 'NULL::NUMERIC';
+                $credit = $item['credit'] != '' && $item['credit']  ? $item['credit'] : 'NULL::NUMERIC';
+                // $account_move_date = $item['date'];
+                $sbu = $item['sbu'];
+                $wip_account_id = $item['wip_account_id'] ?: 'NULL::INTEGER';
+                $actual_apv_id = $item['actual_apv_id'] != '' &&  $item['actual_apv_id'] ?  $item['actual_apv_id'] : 'NULL::INTEGER';
+                $journal = $item['journal'];
+                $journal_id = $item['journal_id'] != '' && $item['journal_id'] ? $item['journal_id'] : 'NULL::INTEGER';
+                $actual_apv_date = $item['actual_apv_date'];
+                // echo $credit;
+                // exit;
+
+                if ($accrual_id != (isset($old_accrual_id) ? $old_accrual_id : 0)) { // ← if this is not the same journal_entry
+
+                    // if ((isset($old_accrual_id) ? $old_accrual_id : 0) != 0) {
+
+                    $updateAccrualQ = "UPDATE M_ACC_ACCRUAL SET TOTAL_REVERSE_VALUE = ABS($total_credit), ACTUAL_APV_ID = $actual_apv_id, is_reversed =true WHERE ID =$accrual_id ";
+                    $db->query($updateAccrualQ);
+
+                    if ($old_accrual_id != 0) {
+                        // INSERT TO WIP
+                        $qToWipRev = insertToWipReversal($old_accrual_id);
+                        $resultToWipRev = $db_ken->fetchAll($qToWip);
+
+                        foreach ($resultToWipRev as $itemToWipRev) {
+                            $db_ken->insert('M_ACC_TO_WIP_REVERSAL', [
+                                'accrual_id' => $old_accrual_id,
+                                'ACCOUNT_CODE' => $itemToWip['account_code'],
+                                'ACCOUNT_ID' => $itemToWip['account_id'],
+                                'CREDIT_ACCOUNT_ID' => $itemToWip['credit_account_id'],
+                                'ANALYTIC_ACCOUNT' => $itemToWip['analytic_account'],
+                                'ANALYTIC_ACCOUNT_ID' => $itemToWip['analytic_account_id'] ?: null,
+                                'MOS' => $itemToWip['mos'],
+                                'DEBIT' => $itemToWip['debit'] ?: null,
+                                'CREDIT' => $itemToWip['credit'] ?: null,
+                                'ADDED_BY' => $user,
+                                'SBU' => $itemToWip['sbu'],
+                                'DATE' => "'$actual_apv_date'"
+                            ]);
+                        }
                     }
+                    // } else {
+                    //     $updateAccrualQ = "UPDATE M_ACC_ACCRUAL SET TOTAL_REVERSE_VALUE = ABS($total_credit), ACTUAL_APV_ID = $actual_apv_id WHERE ID =$accrual_id ";
+                    //     $db->query($updateAccrualQ);
+                    // }
                 }
-                // } else {
-                //     $updateAccrualQ = "UPDATE M_ACC_ACCRUAL SET TOTAL_REVERSE_VALUE = ABS($total_credit), ACTUAL_APV_ID = $actual_apv_id WHERE ID =$accrual_id ";
-                //     $db->query($updateAccrualQ);
-                // }
+
+                $dataLineItems = [
+                    'ACCRUAL_ID' => $accrual_id,
+                    'ACCOUNT_CODE' => "'$account_code'",
+                    'ACCOUNT_ID' => $account_id,
+                    'ANALYTIC_ACCOUNT' => "'$analytic_account'",
+                    'ANALYTIC_ACCOUNT_ID' => $analytic_account_id,
+                    'DISTRIBUTION_PERCENTAGE' => $distribution_percentage,
+                    'DEBIT' => $debit,
+                    'CREDIT' => $credit,
+                    'ADDED_BY' => $user,
+                    'SBU' => "'$sbu'",
+                    'WIP_ACCOUNT_ID' => $wip_account_id,
+                    'DATE' => "'$actual_apv_date'"
+                ];
+                $resultLineItems = $db->insert($dataLineItems, 'M_ACC_REVERSAL');
+
+
+
+                $old_accrual_id = $item["accrual_id"];
             }
+            // INSERT TO WIP
+            $qToWipLastRecord = insertToWipReversal($accrual_id);
+            $resultLastToWip = $db_ken->fetchAll($qToWipLastRecord);
 
-            $dataLineItems = [
-                'ACCRUAL_ID' => $accrual_id,
-                'ACCOUNT_CODE' => "'$account_code'",
-                'ACCOUNT_ID' => $account_id,
-                'ANALYTIC_ACCOUNT' => "'$analytic_account'",
-                'ANALYTIC_ACCOUNT_ID' => $analytic_account_id,
-                'DISTRIBUTION_PERCENTAGE' => $distribution_percentage,
-                'DEBIT' => $debit,
-                'CREDIT' => $credit,
-                'ADDED_BY' => $user,
-                'SBU' => "'$sbu'",
-                'WIP_ACCOUNT_ID' => $wip_account_id,
-                'DATE' => "'$date'"
-            ];
-            $resultLineItems = $db->insert($dataLineItems, 'M_ACC_REVERSAL');
-
-
-
-            $old_accrual_id = $item["accrual_id"];
-        }
-        // INSERT TO WIP
-        $qToWipLastRecord = insertToWipReversal($accrual_id);
-        $resultLastToWip = $db_ken->fetchAll($qToWipLastRecord);
-
-        foreach ($resultLastToWip as $itemToWip) {
-            $db_ken->insert('M_ACC_TO_WIP_REVERSAL', [
-                'ACCRUAL_ID' => $accrual_id,
-                'ACCOUNT_CODE' => $itemToWip['account_code'],
-                'ACCOUNT_ID' => $itemToWip['account_id'],
-                'CREDIT_ACCOUNT_ID' => $itemToWip['credit_account_id'],
-                'ANALYTIC_ACCOUNT' => $itemToWip['analytic_account'],
-                'ANALYTIC_ACCOUNT_ID' => $itemToWip['analytic_account_id'] ?: null,
-                'MOS' => $itemToWip['mos'],
-                'DEBIT' => $itemToWip['debit'] ?: null,
-                'CREDIT' => $itemToWip['credit'] ?: null,
-                'ADDED_BY' => $user,
-                'SBU' => $itemToWip['sbu'],
-                'DATE' => $itemToWip['actual_apv_date']
-            ]);
+            foreach ($resultLastToWip as $itemToWip) {
+                $db_ken->insert('M_ACC_TO_WIP_REVERSAL', [
+                    'ACCRUAL_ID' => $accrual_id,
+                    'ACCOUNT_CODE' => $itemToWip['account_code'],
+                    'ACCOUNT_ID' => $itemToWip['account_id'],
+                    'CREDIT_ACCOUNT_ID' => $itemToWip['credit_account_id'],
+                    'ANALYTIC_ACCOUNT' => $itemToWip['analytic_account'],
+                    'ANALYTIC_ACCOUNT_ID' => $itemToWip['analytic_account_id'] ?: null,
+                    'MOS' => $itemToWip['mos'],
+                    'DEBIT' => $itemToWip['debit'] ?: null,
+                    'CREDIT' => $itemToWip['credit'] ?: null,
+                    'ADDED_BY' => $user,
+                    'SBU' => $itemToWip['sbu'],
+                    'DATE' => $itemToWip['actual_apv_date']
+                ]);
+            }
         }
     }
 }
@@ -299,7 +509,7 @@ function insertToWipReversal($accrual_id)
     aad.date actual_apv_date
     from 
     m_acc_month adr
-        join M_ACC_ACCRUAL maa on maa.month_id = adr.ID
+        join M_ACC_ACCRUAL maa on maa.month_id = adr.ID AND MAA.IS_ACCRUAL
         join M_ACC_REVERSAL aad on aad.accrual_id = maa.id
     join account_analytic_account aaa on aaa.id =aad.analytic_account_id
     join m_acc_depARTMENT_groups adg on adg.id = aaa.m_acc_group_id

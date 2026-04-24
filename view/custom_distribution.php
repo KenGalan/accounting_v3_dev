@@ -215,6 +215,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             COGS Reverse
                         </button>
                     </div> -->
+                            <div class="btness"  style="display: none;">
+                                 <button class="btn btn-success" id="saveCustom">SAVE ADDED SBU</button>
+                            </div>
                     <div style="padding-top:40px;">
                         <div id="distributionEntriesContainer" style="display:none;">
                          <button class="selectSbu btn btn-primary" style="display: none;">SELECT SBU</button>
@@ -224,7 +227,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                 <select id="sbuSelect" class="form-control" multiple style="width:300px;">
                                     <!-- <option value="">Select SBU</option> -->
                                 </select>
-
                                 <button type="button" id="applySbuBtn" class="btn btn-success" style="display:none;">
                                     Add
                                 </button>
@@ -257,9 +259,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                 </tr>
                                 </tfoot>
                             </table>
-                            <div class="btness"  style="display: none;">
-                                 <button class="btn btn-success" id="saveCustom">Save</button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -381,8 +380,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         render: function(data, type, row) {
                             let sbuArray = [];
                             let sbuIds = [];
+                            let custLineId = row.cust_line_dist_id;
 
-                            // normalize sbu names
                             if (Array.isArray(data)) {
                                 sbuArray = data;
                             } else if (typeof data === 'string' && data !== '') {
@@ -400,7 +399,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                             if (!sbuArray.length) return '';
 
-                            // normalize sbu ids
                             if (Array.isArray(row.sbu_ids)) {
                                 sbuIds = row.sbu_ids;
                             } else if (typeof row.sbu_ids === 'string' && row.sbu_ids !== '') {
@@ -431,7 +429,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                         margin-right:5px;
                                         margin-top:2px;
                                         font-size:12px;
-                                    ">
+                                    " data-cust-line-dist-id="${custLineId}">
                                         ${String(sbu).trim()}
                                         <span class="removeSbu"
                                             data-sbu="${String(sbu).trim()}"
@@ -1408,11 +1406,12 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                             let from = row.from_date ? formatDate(row.from_date) : '';
                             let to   = row.to_date ? formatDate(row.to_date) : '';
+                            let custId = row.cust_dist_id;
 
                             if (!from && !to) return '';
 
                             return `
-                                <span class="badge bg-blue" style="background-color: #7C7BAD !important; color:#ffffff !important; font-size: 10pt;">
+                                <span class="badge bg-blue" style="background-color:#7C7BAD !important; color:#ffffff !important; font-size: 10pt;" data-cust-id="${custId}">
                                     ${from}${from && to ? ' → ' : ''}${to}
                                 </span>
                             `;

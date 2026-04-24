@@ -34,7 +34,7 @@ if ($year_month != '') {
                ,case when actual_apv_id is not null then 'True' else 'False' end as reversed
              ,case when reverse_account_move_id is not null then 'True' else 'False' end as rev_odoo_inserted
     from m_acc_month mam
-    left join m_acc_accrual maa on maa.month_id = mam.id
+    left join m_acc_accrual maa on maa.month_id = mam.id and maa.is_accrual
     where mam.year_month = '$year_month'
     and mam.active
     order by acc_active";
@@ -44,7 +44,7 @@ if ($year_month != '') {
  		  ,case when actual_apv_id is not null then 'True' else 'False' end as reversed
 		 ,case when reverse_account_move_id is not null then 'True' else 'False' end as rev_odoo_inserted
 from m_acc_month mam
-left join m_acc_accrual maa on maa.month_id = mam.id
+left join m_acc_accrual maa on maa.month_id = mam.id and maa.is_accrual
 where (not mam.is_dept_distributed or not mam.is_all_reversed)
 and mam.active
 order by acc_active";
@@ -78,7 +78,7 @@ am.name apv,
 am.id apv_id
 from
 m_acc_month mam
-join m_acc_accrual ma on ma.month_id = mam.id
+join m_acc_accrual ma on ma.month_id = mam.id and ma.is_accrual
 JOIN account_account aa ON aa.id = ma.credit_to
 left JOIN m_acc_category_tbl mct ON mct.id = ma.dist_categ_id
 LEFT JOIN M_ACC_COST_DISTRIBUTION acd ON acd.m_acc_category_id = ma.dist_categ_id
@@ -117,7 +117,7 @@ WITH acdr AS (
 		left join (
 			select distinct month_id 
 			from m_acc_accrual 
-			where not is_reversed
+			where not is_reversed and is_accrual
 			) nr on nr.month_id = adr.id
             where not adr.is_all_reversed
 	) A ON TO_CHAR(A.MIN_DATE,'YYYY-MM') = ADR.YEAR_MONTH
@@ -136,7 +136,8 @@ SELECT
     ma.month_id,
     string_agg(DISTINCT aa2.code || ' ' || aa2.name, ', ') AS debit_to,
 	am.name apv,
-	am.id apv_id
+	am.id apv_id,
+    ma.is_reversed
 FROM m_acc_accrual ma
 JOIN account_account aa ON aa.id = ma.credit_to
 JOIN m_acc_category_tbl mct ON mct.id = ma.dist_categ_id
@@ -144,7 +145,7 @@ JOIN acdr ON acdr.id = ma.month_id
 LEFT JOIN M_ACC_COST_DISTRIBUTION acd ON acd.m_acc_category_id = ma.dist_categ_id
 LEFT JOIN account_account aa2 ON aa2.id = acd.debit_to
 left join account_move am on am.id = ma.actual_apv_id
-WHERE ma.active
+WHERE ma.active and ma.is_accrual
 and ma.distributed_account_move_id is not null
 GROUP BY
     ma.id,

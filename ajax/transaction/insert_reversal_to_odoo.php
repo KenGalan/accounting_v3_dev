@@ -27,7 +27,7 @@ false is_wip,
 coalesce(mar.wip_Account_id, NULL::INTEGER) wip_account_id
 FROM
 M_ACC_MONTH ADR
-				join m_acc_accrual maa on maa.month_id = adr.id
+				join m_acc_accrual maa on maa.month_id = adr.id AND MAA.IS_ACCRUAL
 				join M_ACC_REVERSAL mar on mar.accrual_id = maa.id
 left join account_account aa on aa.id = mar.account_id
 WHERE adr.id = $month_id
@@ -53,7 +53,7 @@ aa.root_id,
 true is_wip,
 atw.account_id wip_account_id
 from m_acc_to_wip_reversal atw
-join m_acc_accrual maa on maa.id = atw.accrual_id
+join m_acc_accrual maa on maa.id = atw.accrual_id AND MAA.IS_ACCRUAL
 join account_account aa on aa.id = atw.account_id
 join M_ACC_MONTH ADR on ADR.id = maa.MONTH_ID
 where adr.id =$month_id
@@ -63,10 +63,10 @@ ORDER BY maa.id,COALESCE(atw.debit,0) DESC, aa.code
 
 $result = $db_ken->fetchAll($q);
 // $result2 = $result;
+try {
+    $db_ken->beginTransaction();
+    if ($result) {
 
-if ($result) {
-    try {
-        $db_ken->beginTransaction();
         $account_move_checker = '';
         foreach ($result as $row) {
             $last_date_of_month = $row['last_date_of_month'];
@@ -268,30 +268,30 @@ if ($result) {
 
             $account_move_checker = $row['accrual_id'] . $is_wip;
         }
-
-
-        $qCount = "select count(id) count from m_acc_accrual maa where reverse_account_move_id is null";
-        $qResCount = $db_ken->fetchRow($qCount);
-
-        if ($qResCount && $qResCount['count'] == 0) {
-            $qUpdateRangeStatus = "UPDATE M_ACC_MONTH SET is_all_reversed =$1 WHERE ID = $2";
-            // }
-
-            $db_ken->query(
-                $qUpdateRangeStatus,
-                ['true', $month_id]
-            );
-        }
-
-
-        $db_ken->commit();
-    } catch (Exception $e) {
-        // ROLLBACK EVERYTHING on ANY error
-        $db_ken->rollBack();
-        echo "Transaction failed: " . $e->getMessage();
     }
-}
 
+    $qCount = "select count(id) count from m_acc_accrual maa where reverse_account_move_id is null and month_id = $month_id";
+    // echo $qCount;
+    $qResCount = $db_ken->fetchRow($qCount);
+    if ($qResCount && $qResCount['count'] == 0) {
+        $qUpdateRangeStatus = "UPDATE M_ACC_MONTH SET is_all_reversed =$1 WHERE ID = $2";
+        // }
+
+        $db_ken->query(
+            $qUpdateRangeStatus,
+            ['true', $month_id]
+        );
+    }
+
+
+    $db_ken->commit();
+
+    $message = 'Transaction successfull';
+} catch (Exception $e) {
+    // ROLLBACK EVERYTHING on ANY error
+    $db_ken->rollBack();
+    $message = "Transaction failed: " . $e->getMessage();
+}
 
 function getMOS($month_id, $accrual_id, $sbu, $is_wip)
 {
@@ -315,12 +315,12 @@ aad.sbu,
 from 
 m_acc_month adr
  
-join M_ACC_ACCRUAL maa on maa.month_id= adr.ID
+join M_ACC_ACCRUAL maa on maa.month_id= adr.ID AND MAA.IS_ACCRUAL
 join (
     select  a.accrual_id, a.analytic_account, a.analytic_account_id, sum(a.distribution_percentage) distribution_percentage,a.sbu, sum(a.debit) debit,sum(a.credit) credit,
     MACT.mo_pct_ref
     from M_ACC_REVERSAL a
-    JOIN M_ACC_ACCRUAL a_main on a_main.id = a.accrual_id
+    JOIN M_ACC_ACCRUAL a_main on a_main.id = a.accrual_id AND A_MAIN.IS_ACCRUAL
     JOIN M_ACC_CATEGORY_ACCOUNTS   ACA ON ACA.ACCOUNT_ID = a.account_id and aca.Acc_category_id = a_main.dist_categ_id 
     JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.Acc_category_id
     WHERE A.ACCRUAL_ID = $accrual_id
@@ -387,4 +387,4 @@ EARNED_HRS,
 }
 
 
-echo json_encode('');
+echo json_encode($message);

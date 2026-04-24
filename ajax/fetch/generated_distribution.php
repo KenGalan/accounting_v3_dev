@@ -38,7 +38,7 @@ maa.journal_name    JOURNAL,
     END AS CREDIT,
     ACDR.YEAR_MONTH
 FROM M_ACC_MONTH ACDR
-join M_ACC_ACCRUAL maa on maa.MONTH_ID = ACDR.ID
+join M_ACC_ACCRUAL maa on maa.MONTH_ID = ACDR.ID AND MAA.IS_ACCRUAL
 join M_ACC_ACCRUAL_DIST aad on aad.accrual_id = maa.id
 JOIN ACCOUNT_ACCOUNT AA ON aad.ACCOUNT_ID = AA.ID
 WHERE $parameter

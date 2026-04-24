@@ -19,7 +19,7 @@ DISTINCT
 to_char(FROM_DATE,'YYYY-MM-DD') start_date, 
 to_char(TO_DATE, 'YYYY-MM-DD') end_date
 , TO_CHAR(to_date(to_char(FROM_DATE ,'YYYY-MM'),'YYYY-MM') + INTERVAL '1 month - 1 day', 'MM/DD/YYYY') LAST_DATE_OF_MONTH
-FROM M_ACC_ACCRUAL WHERE ACTIVE");
+FROM M_ACC_ACCRUAL WHERE ACTIVE AND IS_ACCRUAL");
 
 if ($selectDateRange) {
     foreach ($selectDateRange as $date_range) {
@@ -354,7 +354,7 @@ if ($selectDateRange) {
  FROM
           M_ACC_ACCRUAL MAA
           JOIN detailed_percentage DP ON DP.m_acc_category_id =MAA.DIST_CATEG_ID
-          WHERE maa.month_id = $month_id
+          WHERE maa.month_id = $month_id AND MAA.IS_ACCRUAL
           --MAA.FROM_DATE = TO_dATE('2026-03-20','YYYY-MM-DD')  AND maa.TO_DATE = TO_dATE('2026-03-31','YYYY-MM-DD')
           )
               , ranked as(
@@ -536,7 +536,7 @@ if ($selectDateRange) {
      from
      m_acc_accrual je
      join m_acc_category_tbl mact on mact.id = je.dist_categ_id
-     WHERE JE.month_id = $month_id
+     WHERE JE.month_id = $month_id AND JE.IS_ACCRUAL
      )
      select 
      je.id accrual_id,
@@ -567,7 +567,7 @@ if ($selectDateRange) {
      dcem.wip_account wip_account_id
      from
      debit_credit_DIST dcem
-     join m_acC_accrual je on je.id = dcem.accrual_id
+     join m_acC_accrual je on je.id = dcem.accrual_id AND JE.IS_ACCRUAL
      LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
      left join account_journal aj on aj.id = dcem.journal_id
      ORDER BY accrual_id";
@@ -1189,8 +1189,8 @@ function insertToWip($previous_main_id, $month_id)
         adm.invoiced_qty,
         adm.mo_done_qty
     from 
-    m_acc_date_range adr
-        join M_ACC_ACCRUAL maa on maa.month_id = adr.ID
+    m_acc_month adr
+        join M_ACC_ACCRUAL maa on maa.month_id = adr.ID AND MAA.IS_ACCRUAL
         join M_ACC_ACCRUAL_DIST aad on aad.accrual_id = maa.id
     join account_analytic_account aaa on aaa.id =aad.analytic_account_id
     join m_acc_depARTMENT_groups adg on adg.id = aaa.m_acc_group_id
@@ -1308,7 +1308,7 @@ function insertToWip($previous_main_id, $month_id)
  		'From WIP of Previous Months' reference
      	from m_acc_mo_wip am
      	left join m_acc_mo_wip_line aml on aml.mo_wip_id = am.id
-     	join m_acc_accrual maa on maa.id = aml.accrual_id
+     	join m_acc_accrual maa on maa.id = aml.accrual_id AND MAA.IS_ACCRUAL
      	join M_ACC_ACCRUAL_DIST mad on mad.accrual_id = aml.accrual_id and upper(mad.sbu) = upper(am.sbu)
      	join M_ACC_CATEGORY_TBL mact on mact.id = maa.dist_categ_id
      	JOIN allocation_adjusted IM ON IM.MO =AM.MO AND IM.WIP_ACCOUNT_ID = MAD.wip_account_id

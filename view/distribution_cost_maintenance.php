@@ -139,7 +139,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
     }
 
     #categoryTable {
-        width: 100%;
+        width: 100% !important;
         border-collapse: collapse;
         font-size: 16px;
         color: #333;
@@ -1652,11 +1652,14 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     // $('.remove-distribution').hide();
                     cancelBtn.show();
                 } else {
-                    const analytic_account_id = row.data('id');
+                    // const analytic_account_id = $(row).data('is-group') == 't' ? null : $(row).data('id');
+const analytic_account_id = isGroup ? 0 : Number($(row).data('id'));
+const group_id = isGroup ? Number($(row).data('id')) : 0;
                     const dist_id = row.data('dist-id');
                     const distribution_percentage = Number(input.val()) || 0;
                     const debit_to = Number(inputAccount.val()) || 0;
                     const wip_account = Number(inputWipAccount.val()) || 0;
+                    console.log(analytic_account_id);
                     // console.log(wip_account, ' ito yon')
                     if (distribution_percentage == 0 || debit_to == 0) {
                         swal("Warning",
@@ -1688,6 +1691,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                     dist_id: dist_id,
                                     data: JSON.stringify([{
                                         analytic_account_id: analytic_account_id,
+                                        group_id: group_id,
                                         distribution_percentage: distribution_percentage,
                                         debit_to: debit_to,
                                         wip_account: wip_account

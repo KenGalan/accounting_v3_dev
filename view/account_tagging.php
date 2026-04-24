@@ -57,7 +57,7 @@
     </div>
 </div>
 
-<table id="accountTable" class="table table-bordered table-striped w-100">
+<table id="accountTable" class="table table-bordered table-striped w-100 !important">
     <thead>
         <tr>
             <th>Account</th>
@@ -124,7 +124,7 @@
                     return {
                         results: data
                     };
-                }, 
+                },
                 cache: true
             }
         });

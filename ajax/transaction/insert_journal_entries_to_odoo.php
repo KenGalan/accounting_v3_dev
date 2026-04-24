@@ -11,7 +11,7 @@ $accrual_check = $db_ken->fetchRow("
     SELECT distributed_account_move_id, wip_account_move_id
     FROM M_ACC_ACCRUAL
     WHERE (distributed_account_move_id IS NOT NULL
-    OR wip_account_move_id IS NOT NULL) and month_id = $month_id
+    OR wip_account_move_id IS NOT NULL) and month_id = $month_id AND IS_ACCRUAL
 ");
 // echo $accrual_check;
 // exit;
@@ -63,11 +63,11 @@ false is_wip,
 coalesce(maad.wip_Account_id, NULL::INTEGER) wip_account_id
 FROM
 M_ACC_MONTH ADR
-				join m_acc_accrual maa on maa.MONTH_ID = adr.id
+				join m_acc_accrual maa on maa.MONTH_ID = adr.id AND MAA.IS_ACCRUAL
 				join m_acc_accrual_dist maad on maad.accrual_id = maa.id
 left join account_account aa on aa.id = maad.account_id
 WHERE adr.id = $month_id
-ORDER BY maa.id,COALESCE(maad.debit,0) DESC, maad.account_code	)A
+ORDER BY maa.id,COALESCE(maad.credit,0) desc,COALESCE(maad.debit,0) DESC, maad.account_code	)A
 UNION ALL
 select b.* from (
 	select
@@ -88,7 +88,7 @@ aa.root_id,
 true is_wip,
 atw.account_id wip_account_id
 from m_acc_to_wip atw
-join m_acc_accrual maa on maa.id = atw.main_id
+join m_acc_accrual maa on maa.id = atw.main_id AND MAA.IS_ACCRUAL
 join account_account aa on aa.id = atw.account_id
 join M_ACC_MONTH ADR on ADR.id = maa.MONTH_ID
 where adr.id =$month_id
@@ -103,7 +103,7 @@ atw.analytic_account_id,
 atw.analytic_account,
 aa.root_id,
 atw.account_id
- ORDER BY maa.id,debit DESC, aa.code
+ ORDER BY maa.id,credit desc,debit DESC, aa.code
 	)b
 ";
 $result = $db_ken->fetchAll($q);
@@ -364,12 +364,13 @@ function getMOS($month_id, $accrual_id, $sbu, $is_wip, $from_prev)
              join m_acc_mo_wip adm on maw.mos like '%' || adm.mo || '%' and adm.month_id != ma.month_id 
              join m_acc_mo_wip adm2 on adm2.mo = adm.mo and adm2.from_date = ma.from_date and adm2.to_date = ma.to_date and adm2.month_id = ma.month_id
              join M_ACC_MO_WIP_LINE adml on adml.mo_wip_id =adm.id
-             join m_acc_accrual ma2 on ma2.id = adml.accrual_id 
+             join m_acc_accrual ma2 on ma2.id = adml.accrual_id AND MA2.IS_ACCRUAL
              join M_ACC_ACCRUAL_DIST mad2 on mad2.accrual_id = adml.accrual_id and upper(mad2.sbu) = upper(adm.sbu) and maw.account_id =mad2.wip_account_id
              where ma.month_id = $month_id
              and ma.id = $accrual_id
              and maw.item_label != ''
              and lower(adm.sbu) = '$sbu'
+             AND MA.IS_ACCRUAL
             )
             select 
             mo_id,
@@ -423,14 +424,14 @@ function getMOS($month_id, $accrual_id, $sbu, $is_wip, $from_prev)
     adm.mo_done_qty
     from 
     m_acc_month adr
-    join M_ACC_ACCRUAL maa on maa.month_id = adr.ID
+    join M_ACC_ACCRUAL maa on maa.month_id = adr.ID AND MAA.IS_ACCRUAL
     join (
     select  a.accrual_id, a.analytic_account, a.analytic_account_id, sum(a.distribution_percentage) distribution_percentage,a.sbu, sum(a.debit) debit,sum(a.credit) credit,
     MACT.mo_pct_ref,
     a_main.from_date,
         a_main.to_date
     from M_ACC_ACCRUAL_DIST a
-    JOIN M_ACC_ACCRUAL a_main on a_main.id = a.accrual_id
+    JOIN M_ACC_ACCRUAL a_main on a_main.id = a.accrual_id AND A_MAIN.IS_ACCRUAL
     JOIN M_ACC_CATEGORY_ACCOUNTS   ACA ON ACA.ACCOUNT_ID = a.account_id and aca.Acc_category_id = a_main.dist_categ_id 
     JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.Acc_category_id
 WHERE A.ACCRUAL_ID = $accrual_id

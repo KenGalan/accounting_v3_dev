@@ -33,7 +33,7 @@ $sql = "
             aaa.name AS account_analytic
         FROM account_move_line aml
         JOIN account_move am ON aml.move_id = am.id
-        JOIN M_ACC_ACCRUAL acc ON am.id = acc.distributed_account_move_id
+        JOIN M_ACC_ACCRUAL acc ON am.id = acc.distributed_account_move_id AND ACC.IS_ACCRUAL
         JOIN ACCOUNT_ACCOUNT aa ON aml.account_id = aa.id
         LEFT JOIN ACCOUNT_ANALYTIC_ACCOUNT aaa ON aml.analytic_account_id = aaa.id
         WHERE acc.id = $1
@@ -56,7 +56,7 @@ $sql = "
             aaa.name AS account_analytic
         FROM account_move_line aml
         JOIN account_move am ON aml.move_id = am.id
-        JOIN M_ACC_ACCRUAL acc ON am.id = acc.wip_account_move_id
+        JOIN M_ACC_ACCRUAL acc ON am.id = acc.wip_account_move_id AND ACC.IS_ACCRUAL
         JOIN ACCOUNT_ACCOUNT aa ON aml.account_id = aa.id
         LEFT JOIN ACCOUNT_ANALYTIC_ACCOUNT aaa ON aml.analytic_account_id = aaa.id
         WHERE acc.id = $1
@@ -79,7 +79,7 @@ $sql = "
             aaa.name AS account_analytic
         FROM account_move_line aml
         JOIN account_move am ON aml.move_id = am.id
-        JOIN M_ACC_ACCRUAL acc ON am.id = acc.reverse_account_move_id
+        JOIN M_ACC_ACCRUAL acc ON am.id = acc.reverse_account_move_id AND ACC.IS_ACCRUAL
         JOIN ACCOUNT_ACCOUNT aa ON aml.account_id = aa.id
         LEFT JOIN ACCOUNT_ANALYTIC_ACCOUNT aaa ON aml.analytic_account_id = aaa.id
         WHERE acc.id = $1
@@ -102,7 +102,7 @@ $sql = "
             aaa.name AS account_analytic
         FROM account_move_line aml
         JOIN account_move am ON aml.move_id = am.id
-        JOIN M_ACC_ACCRUAL acc ON am.id = acc.wip_reverse_account_move_id
+        JOIN M_ACC_ACCRUAL acc ON am.id = acc.wip_reverse_account_move_id ACC.IS_ACCRUAL
         JOIN ACCOUNT_ACCOUNT aa ON aml.account_id = aa.id
         LEFT JOIN ACCOUNT_ANALYTIC_ACCOUNT aaa ON aml.analytic_account_id = aaa.id
         WHERE acc.id = $1

@@ -39,7 +39,8 @@ try {
                 'DIST_CATEG_ID' => intval($row['dist_template']),
                 'FROM_DATE' => $row['from_date'],
                 'TO_DATE' => $row['to_date'],
-                'ADDED_BY' => intval($user)
+                'ADDED_BY' => intval($user),
+                'IS_ACCRUAL' => true
             ];
         } else {
             $insertData = [
@@ -47,7 +48,8 @@ try {
                 'CREDIT_TO' => $row['credit_account'],
                 'TOTAL_ACCRUAL_VALUE' => $row['accrual_value'],
                 'DIST_CATEG_ID' => intval($row['dist_template']),
-                'ADDED_BY' => intval($user)
+                'ADDED_BY' => intval($user),
+                'IS_ACCRUAL' => true
             ];
         }
 

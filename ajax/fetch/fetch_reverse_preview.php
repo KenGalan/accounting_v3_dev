@@ -19,7 +19,7 @@ $q = "with maa as(
      total_diff
     ,maa.* from account_move am
     join  account_move_line aml on aml.move_id = am.id
-    join m_acc_accrual maa on maa.credit_to = aml.account_id
+    join m_acc_accrual maa on maa.credit_to = aml.account_id AND MAA.IS_ACCRUAL
     where am.id = $apv_id and maa.id =$accrual_id
     group by
     maa.total_accrual_value, maa.id
@@ -42,7 +42,7 @@ $q = "with maa as(
             maa.journal_id
     from maa
     join M_ACC_ACCRUAL_DIST maad on  maad.accrual_id = maa.id
-    where maa.id =$accrual_id and maad.distribution_percentage is not null
+    where maa.id =$accrual_id and maad.distribution_percentage is not null AND MAA.IS_ACCRUAL
     )
     , ranked as(
             select
@@ -139,7 +139,7 @@ $q = "with maa as(
         $apv_id actual_apv_id
         from
         debit_credit_DIST dcem
-        join m_acC_accrual je on je.id = dcem.accrual_id
+        join m_acC_accrual je on je.id = dcem.accrual_id AND JE.IS_ACCRUAL
         LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
         left join account_journal aj on aj.id = dcem.journal_id
         ORDER BY sbu desc, analytic_account";
@@ -180,7 +180,7 @@ from
  join account_analytic_account aaa on aaa.id =aad.analytic_account_id
     join m_acc_depARTMENT_groups adg on adg.id = aaa.m_acc_group_id
 	join am on am.move_name is not null
-	where  adg.dept_group ='MANUFACTURING/PRODUCT LINE' and accrual_id = $accrual_id
+	where  adg.dept_group ='MANUFACTURING/PRODUCT LINE' and accrual_id = $accrual_id AND MAA.IS_ACCRUAL
 	)
 	
 	, not_tally as(
@@ -207,7 +207,7 @@ from
    -- join m_acc_dist_mo adm on adm.sbu =fr.sbu and fr.date_range_id = adm.date_range_id
  --   JOIN ACCOUNT_ACCOUNT   AA ON AA.ID = fr.ACCOUNT_ID
   --  JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =AA.m_acc_category_id
-    	JOIN M_ACC_ACCRUAL a_main on a_main.id = fr.accrual_id
+    	JOIN M_ACC_ACCRUAL a_main on a_main.id = fr.accrual_id AND A_MAIN.IS_ACCRUAL
     join m_acc_dist_mo adm on adm.sbu =fr.sbu and fr.date_range_id = adm.date_range_id
 		JOIN M_ACC_CATEGORY_ACCOUNTS   ACA ON ACA.ACCOUNT_ID = fr.ACCOUNT_ID and aca.Acc_category_id = a_main.dist_categ_id 
 		JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.Acc_category_id

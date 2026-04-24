@@ -41,21 +41,21 @@ if ($res && pg_num_rows($res) > 0) {
 
 ?>
 <style>
-body.sidebar-hidden #leftsidebar {
-    transform: translateX(-100%);
-    transition: 0.3s;
-}
+    body.sidebar-hidden #leftsidebar {
+        transform: translateX(-100%);
+        transition: 0.3s;
+    }
 
-body.sidebar-hidden section.content {
-    margin-left: 0 !important;
-}
+    body.sidebar-hidden section.content {
+        margin-left: 0 !important;
+    }
 
-#leftsidebar {
-    transition: 0.3s;
-}
+    #leftsidebar {
+        transition: 0.3s;
+    }
 </style>
 
-<aside id="leftsidebar" class="sidebar">
+<aside id="leftsidebar" class="sidebar" style="height:185vh">
     <div class="menu">
         <ul class="list">
             <li class="header">MAIN NAVIGATION</li>
@@ -84,8 +84,8 @@ body.sidebar-hidden section.content {
                     </a>
                     <ul class="ml-menu">
                         <?php if ($hasAdminAccess) { ?>
-                            <li class="<?php echo ($basename_server == 'accrual.php' ? 'active' : ''); ?>">
-                                <a href="accrual.php" class="waves-effect waves-block">
+                            <li class="<?php echo ($basename_server == 'accrual_customized.php' ? 'active' : ''); ?>">
+                                <a href="accrual_customized.php" class="waves-effect waves-block">
 
                                     <span>Active Accruals</span>
                                 </a>
@@ -137,7 +137,7 @@ body.sidebar-hidden section.content {
                                     <span>Category Maintenance</span>
                                 </a>
                             </li>
-                                <li class="<?php echo ($basename_server == 'account_tagging.php' ? 'active' : ''); ?>">
+                            <li class="<?php echo ($basename_server == 'account_tagging.php' ? 'active' : ''); ?>">
                                 <a href="account_tagging.php" class="waves-effect waves-block">
                                     <span>Magic Setup?</span>
                                 </a>
@@ -327,14 +327,14 @@ body.sidebar-hidden section.content {
         );
     }
 
-    $('#toggleSidebarBtn').on('click', function () {
-    $('body').toggleClass('sidebar-hidden');
+    $('#toggleSidebarBtn').on('click', function() {
+        $('body').toggleClass('sidebar-hidden');
 
-    // save state
-    if ($('body').hasClass('sidebar-hidden')) {
-        localStorage.setItem('sidebarHidden', '1');
-    } else {
-        localStorage.setItem('sidebarHidden', '0');
-    }
-});
+        // save state
+        if ($('body').hasClass('sidebar-hidden')) {
+            localStorage.setItem('sidebarHidden', '1');
+        } else {
+            localStorage.setItem('sidebarHidden', '0');
+        }
+    });
 </script>

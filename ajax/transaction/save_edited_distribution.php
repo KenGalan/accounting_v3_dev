@@ -6,6 +6,8 @@ $conn = $db->getConnection();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $category_id = isset($_POST['category_id']) ? intval($_POST['category_id']) : 0;
     $dist_id = isset($_POST['dist_id']) ? intval($_POST['dist_id']) : 0;
+    // echo dist_id;
+    // exit
 
     $data = isset($_POST['data']) ? json_decode($_POST['data'], true) : [];
 
@@ -18,7 +20,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $added_on = date('Y-m-d H:i:s.u');
     $added_by = $_SESSION['ppc']['emp_no'];
 
-    // Get current total distribution excluding rows being updated
     $analytic_ids = array_map(function ($row) {
         return intval($row['analytic_account_id']);
     }, $data);
@@ -49,46 +50,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Loop through each row to update or insert
-    foreach ($data as $row) {
-        $analytic_account_id = intval($row['analytic_account_id']);
-        $distribution_percentage = floatval($row['distribution_percentage']);
-        $debit_to = floatval($row['debit_to']);
-        $wip_account = floatval($row['wip_account']);
+foreach ($data as $row) {
+    $analytic_account_id = intval($row['analytic_account_id']);
+$group_id = isset($row['group_id']) ? intval($row['group_id']) : 0;
+    $distribution_percentage = floatval($row['distribution_percentage']);
+    $debit_to = intval($row['debit_to']);
+    $wip_account = intval($row['wip_account']);
 
-        $check_query = "
-            SELECT * FROM M_ACC_COST_DISTRIBUTION 
-            WHERE analytic_account_id = $analytic_account_id 
-            AND m_acc_category_id = $category_id
+    $check_query = "
+        SELECT id, distribution_percentage 
+        FROM M_ACC_COST_DISTRIBUTION 
+        WHERE analytic_account_id = $analytic_account_id
+        AND group_id = $group_id
+        AND m_acc_category_id = $category_id
+        AND debit_to = $debit_to
+    ";
+
+    $result = pg_query($conn, $check_query);
+
+    if ($result && pg_num_rows($result) > 0) {
+
+        $existing = pg_fetch_assoc($result);
+        $existing_id = intval($existing['id']);
+
+        $update_query = "
+            UPDATE M_ACC_COST_DISTRIBUTION
+            SET distribution_percentage = $distribution_percentage,
+                debit_to = $debit_to,
+                wip_account = $wip_account,
+                changed_on = '$added_on',
+                changed_by = $added_by
+            WHERE id = $existing_id
         ";
-        $result = pg_query($conn, $check_query);
 
-        if (pg_num_rows($result) > 0) {
-            // Update existing
-            $update_query = "
-                UPDATE M_ACC_COST_DISTRIBUTION
-                SET distribution_percentage = $distribution_percentage,
-                    debit_to = $debit_to,
-                    wip_account = $wip_account,
-                    changed_on = '$added_on',
-                    changed_by = $added_by
-                WHERE analytic_account_id = $analytic_account_id
-                AND m_acc_category_id = $category_id
-                and id = $dist_id
-            ";
-            // echo '<pre>';
-            // echo $update_query;
-            // exit;
-            if (!pg_query($conn, $update_query)) $success = false;
-        } else {
-            // Insert new
-            $insert_query = "
-                INSERT INTO M_ACC_COST_DISTRIBUTION
-                (distribution_percentage, analytic_account_id, added_on, added_by, active, m_acc_category_id, debit_to, wip_account)
-                VALUES ($distribution_percentage, $analytic_account_id, '$added_on', $added_by, true, $category_id, $debit_to, $wip_account)
-            ";
-            if (!pg_query($conn, $insert_query)) $success = false;
+        if (!pg_query($conn, $update_query)) {
+            $success = false;
+        }
+
+    } else {
+
+        $insert_query = "
+            INSERT INTO M_ACC_COST_DISTRIBUTION
+            (
+                distribution_percentage,
+                analytic_account_id,
+                group_id,
+                added_by,
+                active,
+                m_acc_category_id,
+                debit_to,
+                wip_account
+            )
+            VALUES (
+                $distribution_percentage,
+                $analytic_account_id,
+                $group_id,
+                $added_by,
+                true,
+                $category_id,
+                $debit_to,
+                $wip_account
+            )
+        ";
+
+        if (!pg_query($conn, $insert_query)) {
+            $success = false;
         }
     }
+}
 
     if ($success) {
         echo json_encode(['status' => 'success']);

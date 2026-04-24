@@ -44,7 +44,7 @@ aa.root_id,
 false is_wip
 FROM
 M_ACC_DATE_RANGE ADR
-				join m_acc_accrual maa on maa.date_range_id = adr.id
+				join m_acc_accrual maa on maa.date_range_id = adr.id AND MAA.IS_ACCRUAL
 				join m_acc_accrual_dist maad on maad.accrual_id = maa.id
 left join account_account aa on aa.id = maad.account_id
 WHERE adr.id = $month_id
@@ -66,7 +66,7 @@ COALESCE(atw.credit,0) credit,
 aa.root_id,
 true is_wip
 from m_acc_to_wip atw
-join m_acc_accrual maa on maa.id = atw.main_id
+join m_acc_accrual maa on maa.id = atw.main_id AND MAA.IS_ACCRUAL
 join account_account aa on aa.id = atw.account_id
 join M_ACC_DATE_RANGE ADR on ADR.id = maa.date_range_id
 where adr.id =$month_id
@@ -326,7 +326,7 @@ aad.sbu,
               adm.is_invoiced
 from 
 m_acc_date_range adr
-join M_ACC_ACCRUAL maa on maa.date_range_id = adr.ID
+join M_ACC_ACCRUAL maa on maa.date_range_id = adr.ID AND MAA.IS_ACCRUAL
 join (
 select  a.accrual_id, a.analytic_account, a.analytic_account_id, sum(a.distribution_percentage) distribution_percentage,a.sbu, sum(a.debit) debit,sum(a.credit) credit,
 MACT.mo_pct_ref

@@ -13,7 +13,7 @@ atw.debit,
 coalesce(atw.credit,0) credit,
 atw.mos
 from m_acc_to_wip atw
-join M_ACC_ACCRUAL adje on adje.id = atw.main_id
+join M_ACC_ACCRUAL adje on adje.id = atw.main_id AND ADJE.IS_ACCRUAL
 join account_account aa on aa.id = atw.account_id
 where atw.main_id = $journal_entries_id";
 

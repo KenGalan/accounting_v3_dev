@@ -27,7 +27,8 @@ WITH setup AS (
     SELECT 
         ac.move_id,
         acdl.move_line_id,
-        unnest(acdl.sbu) AS sbu_id
+        unnest(acdl.sbu) AS sbu_id,
+        acdl.id AS cust_line_dist_id
     FROM m_acc_cust_dist ac
     JOIN m_acc_cust_dist_line acdl 
         ON acdl.move_id = ac.move_id
@@ -53,7 +54,8 @@ SELECT
         json_agg(s.sbu_id ORDER BY s.sbu_id) 
         FILTER (WHERE s.sbu_id IS NOT NULL),
         '[]'::json
-    ) AS sbu_ids
+    ) AS sbu_ids,
+     s.cust_line_dist_id
 FROM account_move_line aml
 JOIN account_move am ON aml.move_id = am.id
 JOIN account_account aa ON aml.account_id = aa.id
@@ -72,7 +74,8 @@ GROUP BY
     aml.credit,
     am.id,
     aml.id,
-    aaa.name
+    aaa.name,
+    s.cust_line_dist_id
 ";
 
 $result = $db->fetchAll($q, [$move_id]);
