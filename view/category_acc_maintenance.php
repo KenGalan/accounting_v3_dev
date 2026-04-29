@@ -164,6 +164,13 @@
             let journals = [];
             let deptTable;
 
+            let moDistList = [];
+
+            $.getJSON('ajax/json/mo_distribution.json', function (data) {
+                moDistList = data;
+                // initDeptTable();
+            });
+
             $.ajax({
                 url: "ajax/fetch/get_journals.php",
                 type: "GET",
@@ -224,14 +231,16 @@
                         },
                         {
                             data: 'mo_pct_ref',
-                            render: function(mo_pct_ref) {
+                            render: function(mo_pct_ref, type, row) {
+
                                 let html = `<select class="pct_ref_select" disabled>`;
                                 html += `<option value="">Select Option</option>`;
-                                html += `<option value="EH" ${mo_pct_ref == 'EH' ? 'selected': ''}>MO Earned Hours</option>`;
-                                html += `<option value="QTY" ${mo_pct_ref == 'QTY' ? 'selected': ''}>MO Quantity</option>`;
-                                // journals.forEach(j => {
-                                //     html += `<option value="${j.id}" ${journal_id == j.id ? 'selected' : ''}>${j.name}</option>`;
-                                // });
+
+                                moDistList.forEach(item => {
+                                    html += `<option value="${item.value}" ${mo_pct_ref == item.value ? 'selected' : ''}>
+                                                ${item.name}
+                                            </option>`;
+                                });
 
                                 html += `</select>`;
                                 return html;

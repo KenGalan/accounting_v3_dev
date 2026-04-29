@@ -50,46 +50,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Loop through each row to update or insert
-foreach ($data as $row) {
-    $analytic_account_id = intval($row['analytic_account_id']);
-$group_id = isset($row['group_id']) ? intval($row['group_id']) : 0;
-    $distribution_percentage = floatval($row['distribution_percentage']);
-    $debit_to = intval($row['debit_to']);
-    $wip_account = intval($row['wip_account']);
+    foreach ($data as $row) {
+        $analytic_account_id = $row['analytic_account_id'] ? intval($row['analytic_account_id']) : 0;
+        $group_id = isset($row['group_id']) ? intval($row['group_id']) : 0;
+        $distribution_percentage = floatval($row['distribution_percentage']);
+        $debit_to = intval($row['debit_to']);
+        $wip_account = intval($row['wip_account']);
 
-    $check_query = "
-        SELECT id, distribution_percentage 
-        FROM M_ACC_COST_DISTRIBUTION 
-        WHERE analytic_account_id = $analytic_account_id
-        AND group_id = $group_id
-        AND m_acc_category_id = $category_id
-        AND debit_to = $debit_to
-    ";
 
-    $result = pg_query($conn, $check_query);
 
-    if ($result && pg_num_rows($result) > 0) {
 
-        $existing = pg_fetch_assoc($result);
-        $existing_id = intval($existing['id']);
 
-        $update_query = "
+        // if ($result && pg_num_rows($result) > 0) {
+        if ($dist_id) {
+
+
+            $update_query = "
             UPDATE M_ACC_COST_DISTRIBUTION
             SET distribution_percentage = $distribution_percentage,
                 debit_to = $debit_to,
                 wip_account = $wip_account,
                 changed_on = '$added_on',
                 changed_by = $added_by
-            WHERE id = $existing_id
+            WHERE id = $dist_id
         ";
 
-        if (!pg_query($conn, $update_query)) {
-            $success = false;
-        }
 
-    } else {
+            if (!pg_query($conn, $update_query)) {
+                $success = false;
+            }
+        } else {
 
-        $insert_query = "
+            $insert_query = "
             INSERT INTO M_ACC_COST_DISTRIBUTION
             (
                 distribution_percentage,
@@ -113,11 +105,11 @@ $group_id = isset($row['group_id']) ? intval($row['group_id']) : 0;
             )
         ";
 
-        if (!pg_query($conn, $insert_query)) {
-            $success = false;
+            if (!pg_query($conn, $insert_query)) {
+                $success = false;
+            }
         }
     }
-}
 
     if ($success) {
         echo json_encode(['status' => 'success']);

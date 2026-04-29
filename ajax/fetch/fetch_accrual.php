@@ -102,6 +102,9 @@ am.id
 
 $res = $db->fetchAll($query);
 
+if (!$resulta && $year_month) {
+    $res = false;
+}
 
 
 $queryReversal = "

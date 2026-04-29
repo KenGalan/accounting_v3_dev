@@ -902,7 +902,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
                     html_wip += `</select>`;
 
-                    if (parts_dept_group != 'MANUFACTURING/PRODUCT LINE') {
+                    if (parts_dept_group == 'GENERAL & ADMIN') {
                         html_wip = '';
                     }
 
@@ -1231,7 +1231,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                 html_wip += `</select>`;
 
 
-                                if (tagged_dept['dept_group'] != 'MANUFACTURING/PRODUCT LINE') {
+                                if (tagged_dept['dept_group'] == 'GENERAL & ADMIN') {
                                     html_wip = '';
                                 }
 
@@ -1252,6 +1252,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
 
                                 $(node).attr('data-id', tagged_dept['analytic_account_id']);
+                                $(node).attr('data-group-id', tagged_dept['group_id']);
                                 $(node).attr('data-dist-id', tagged_dept['dist_id']);
                                 $(node).data('original-value', tagged_dept['distribution_percentage'] || 0);
                                 $(node).data('original-debit-to', tagged_dept['debit_to'] || 0);
@@ -1259,6 +1260,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
                             }
                             // setSelect2();
+
                             updateTotalDistribution();
                             toggleDistributionButton();
                         } else {
@@ -1528,7 +1530,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                 });
 
                                 html_wip += `</select>`;
-                                if (tagged_dept['dept_group'] != 'MANUFACTURING/PRODUCT LINE') {
+                                if (tagged_dept['dept_group'] == 'GENERAL & ADMIN') {
                                     html_wip = '';
                                 }
 
@@ -1546,6 +1548,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                         <button class="remove-distribution btn btn-sm btn-danger"><i class="fa fa-trash"></i></button>`
                                 ]).draw(false).node();
 
+                                $(node).attr('data-group-id', tagged_dept['group_id']);
                                 $(node).attr('data-id', tagged_dept['analytic_account_id']);
                                 $(node).attr('data-dist-id', tagged_dept['dist_id']);
                                 $(node).data('original-value', tagged_dept['distribution_percentage'] || 0);
@@ -1572,9 +1575,10 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
             $('#deptTable').on('click', '.remove-distribution', function() {
                 const row = $(this).closest('tr');
                 const analytic_account_id = row.data('id');
+                const group_id = row.data('group-id');
                 const dist_id = row.data('dist-id');
 
-                if (!analytic_account_id) {
+                if (!analytic_account_id && !group_id) {
                     swal("Error", "Missing analytic account ID.", "error");
                     return;
                 }
@@ -1601,7 +1605,8 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                             data: {
                                 analytic_account_id: analytic_account_id,
                                 category_id: currentCategoryId,
-                                dist_id: dist_id
+                                dist_id: dist_id,
+                                group_id: group_id
                             },
                             success: function(res) {
                                 if (res.status === 'success') {
@@ -1653,8 +1658,9 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     cancelBtn.show();
                 } else {
                     // const analytic_account_id = $(row).data('is-group') == 't' ? null : $(row).data('id');
-const analytic_account_id = isGroup ? 0 : Number($(row).data('id'));
-const group_id = isGroup ? Number($(row).data('id')) : 0;
+                    isGroup = row['group_id'] ? true : false
+                    const analytic_account_id = isGroup ? 0 : Number($(row).data('id'));
+                    const group_id = isGroup ? Number($(row).data('group-id')) : 0;
                     const dist_id = row.data('dist-id');
                     const distribution_percentage = Number(input.val()) || 0;
                     const debit_to = Number(inputAccount.val()) || 0;

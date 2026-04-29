@@ -5,13 +5,16 @@ session_start();
 $db = new Postgresql();
 $db_ken = new PostgresqlKen();
 $month_id = $_POST['month_id'];
+$is_accrual = $_POST['is_accrual'];
+$message = '';
+$accrual_where = $is_accrual == 'true' ? '' : 'NOT';
 
 // Added by Ivan 03/23/26 -  Check if the month is already inserted to Odoo.
 $accrual_check = $db_ken->fetchRow("
     SELECT distributed_account_move_id, wip_account_move_id
     FROM M_ACC_ACCRUAL
     WHERE (distributed_account_move_id IS NOT NULL
-    OR wip_account_move_id IS NOT NULL) and month_id = $month_id AND IS_ACCRUAL
+    OR wip_account_move_id IS NOT NULL) and month_id = $month_id AND $accrual_where IS_ACCRUAL
 ");
 // echo $accrual_check;
 // exit;
@@ -23,26 +26,6 @@ if ($accrual_check) {
     exit;
 }
 
-// $qWIP = "SELECT mo_id, sbu FROM
-// M_ACC_DIST_MO
-// WHERE DATE_RANGE_ID =$month_id
-// AND --NOT IS_INVOICED
-// IS_INVOICED
-// order by sbu";
-// // echo $qWIP;
-// // exit;
-// $mosRes = $db_ken->fetchAll($qWIP);
-// $allWIP = [];
-
-
-
-// foreach ($mosRes as $row) {
-//     $key = strtolower($row['sbu']); // "modules", "sot"
-//     $allWIP[$key][] = (string) $row['mo_id'];
-// }
-
-// // var_dump($allWIP);
-// // exit;
 
 $q = "select a.* from (SELECT
 maa.id accrual_id,
@@ -63,7 +46,7 @@ false is_wip,
 coalesce(maad.wip_Account_id, NULL::INTEGER) wip_account_id
 FROM
 M_ACC_MONTH ADR
-				join m_acc_accrual maa on maa.MONTH_ID = adr.id AND MAA.IS_ACCRUAL
+				join m_acc_accrual maa on maa.MONTH_ID = adr.id AND $accrual_where MAA.IS_ACCRUAL
 				join m_acc_accrual_dist maad on maad.accrual_id = maa.id
 left join account_account aa on aa.id = maad.account_id
 WHERE adr.id = $month_id
@@ -88,7 +71,7 @@ aa.root_id,
 true is_wip,
 atw.account_id wip_account_id
 from m_acc_to_wip atw
-join m_acc_accrual maa on maa.id = atw.main_id AND MAA.IS_ACCRUAL
+join m_acc_accrual maa on maa.id = atw.main_id AND $accrual_where MAA.IS_ACCRUAL
 join account_account aa on aa.id = atw.account_id
 join M_ACC_MONTH ADR on ADR.id = maa.MONTH_ID
 where adr.id =$month_id
@@ -210,15 +193,17 @@ if ($result) {
                 } else {
                     // echo '1' . $wip_account_id;
                     // if ($wip_account_id) {
-                    $qGetMosLine =  getMOS($month_id,  $accrual_id, '', '', false);
+                    $qGetMosLine =  getMOS($month_id,  $accrual_id, '', '', false, $accrual_where, '');
                     $resMosLine = $db_ken->fetchAll($qGetMosLine);
+
+                    $allocation_name = $is_accrual == 'true' ? 'ACCRUAL_ALLOCATION' : 'ACTUAL_ALLOCATION';
+
                     foreach ($resMosLine as $mosLine) {
-
-
                         $mo_line_entries = [
                             'MO_WIP_ID' =>    $mosLine['mo_wip_id'],
                             'ACCRUAL_ID' => $mosLine['accrual_id'],
-                            'ACCRUAL_ALLOCATION' =>  $mosLine['allocation']
+                            $allocation_name =>  $mosLine['allocation'],
+                            'COGS_ACCOUNT_ID' => $mosLine['wip_account_id']
                         ];
 
                         $db_ken->insert('M_ACC_MO_WIP_LINE', $mo_line_entries);
@@ -308,7 +293,7 @@ if ($result) {
                     if ($sbu_result != "" && $wip_account_id) {
 
 
-                        $qGetMos =  getMOS($month_id,  $accrual_id, $sbu_result, $is_wip, true);
+                        $qGetMos =  getMOS($month_id,  $accrual_id, $sbu_result, $is_wip, true, $accrual_where, $wip_account_id);
                         $resMos = $db_ken->fetchAll($qGetMos);
                         foreach ($resMos as $mos) {
 
@@ -335,13 +320,16 @@ if ($result) {
     } catch (Exception $e) {
         // ROLLBACK EVERYTHING on ANY error
         $db_ken->rollBack();
-        echo "Transaction failed: " . $e->getMessage();
+        $message =   "Transaction failed: " . $e->getMessage();
     }
+} else {
+    $message = 'no result';
 }
 
-
-function getMOS($month_id, $accrual_id, $sbu, $is_wip, $from_prev)
+function getMOS($month_id, $accrual_id, $sbu, $is_wip, $from_prev, $accrual_where, $wip_account_id)
 {
+
+    $wip_params = $wip_account_id == '' ? 'WIP_ACCOUNT_ID' : $wip_account_id;
     if ($is_wip == 't' &&  $from_prev == 1) {
         $addQuery = ", for_sum as (	
             select 
@@ -349,7 +337,8 @@ function getMOS($month_id, $accrual_id, $sbu, $is_wip, $from_prev)
             percentage,
             sbu,
             MO,
-            coalesce(round((invoiced_qty/mo_done_qty)* allocation,5),allocation) ALLOCATION
+            coalesce(round((invoiced_qty/mo_done_qty)* allocation,5),allocation) ALLOCATION,
+            WIP_ACCOUNT_ID
             from 
             final_data
             union all
@@ -358,19 +347,20 @@ function getMOS($month_id, $accrual_id, $sbu, $is_wip, $from_prev)
              null::numeric percentage,
              maw.sbu,
              adm.mo,
-             (adm2.invoiced_qty/adm2.mo_done_qty) * coalesce(adml.actual_allocation, adml.accrual_allocation) allocation
+             (adm2.invoiced_qty/adm2.mo_done_qty) * coalesce(adml.actual_allocation, adml.accrual_allocation) allocation,
+             mad2.wip_account_id
              from m_acc_accrual ma
              join m_acc_to_wip maw on maw.main_id= ma.id
              join m_acc_mo_wip adm on maw.mos like '%' || adm.mo || '%' and adm.month_id != ma.month_id 
              join m_acc_mo_wip adm2 on adm2.mo = adm.mo and adm2.from_date = ma.from_date and adm2.to_date = ma.to_date and adm2.month_id = ma.month_id
              join M_ACC_MO_WIP_LINE adml on adml.mo_wip_id =adm.id
-             join m_acc_accrual ma2 on ma2.id = adml.accrual_id AND MA2.IS_ACCRUAL
+             join m_acc_accrual ma2 on ma2.id = adml.accrual_id AND $accrual_where MA2.IS_ACCRUAL
              join M_ACC_ACCRUAL_DIST mad2 on mad2.accrual_id = adml.accrual_id and upper(mad2.sbu) = upper(adm.sbu) and maw.account_id =mad2.wip_account_id
              where ma.month_id = $month_id
              and ma.id = $accrual_id
              and maw.item_label != ''
              and lower(adm.sbu) = '$sbu'
-             AND MA.IS_ACCRUAL
+             AND $accrual_where MA.IS_ACCRUAL
             )
             select 
             mo_id,
@@ -383,7 +373,8 @@ function getMOS($month_id, $accrual_id, $sbu, $is_wip, $from_prev)
             group by mo_id,
             percentage,
             sbu,
-            mo";
+            mo,
+            WIP_ACCOUNT_ID";
     } else {
         $addQuery = " select 
              accrual_id,
@@ -398,7 +389,8 @@ function getMOS($month_id, $accrual_id, $sbu, $is_wip, $from_prev)
              allocation,
              percentage,
              sbu,
-             is_invoiced
+             is_invoiced,
+			 WIP_ACCOUNT_ID
              from 
              final_data";
     }
@@ -421,22 +413,24 @@ function getMOS($month_id, $accrual_id, $sbu, $is_wip, $from_prev)
     aad.sbu,
                   adm.is_invoiced,
              adm.invoiced_qty,
-    adm.mo_done_qty
+    adm.mo_done_qty,
+    aad.WIP_ACCOUNT_ID
     from 
     m_acc_month adr
-    join M_ACC_ACCRUAL maa on maa.month_id = adr.ID AND MAA.IS_ACCRUAL
+    join M_ACC_ACCRUAL maa on maa.month_id = adr.ID AND $accrual_where MAA.IS_ACCRUAL
     join (
     select  a.accrual_id, a.analytic_account, a.analytic_account_id, sum(a.distribution_percentage) distribution_percentage,a.sbu, sum(a.debit) debit,sum(a.credit) credit,
     MACT.mo_pct_ref,
     a_main.from_date,
-        a_main.to_date
+        a_main.to_date,
+        A.WIP_ACCOUNT_ID
     from M_ACC_ACCRUAL_DIST a
-    JOIN M_ACC_ACCRUAL a_main on a_main.id = a.accrual_id AND A_MAIN.IS_ACCRUAL
+    JOIN M_ACC_ACCRUAL a_main on a_main.id = a.accrual_id AND $accrual_where A_MAIN.IS_ACCRUAL
     JOIN M_ACC_CATEGORY_ACCOUNTS   ACA ON ACA.ACCOUNT_ID = a.account_id and aca.Acc_category_id = a_main.dist_categ_id 
     JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.Acc_category_id
 WHERE A.ACCRUAL_ID = $accrual_id
 and a.WIP_ACCOUNT_ID IS NOT NULL
-group by  a.accrual_id, a.analytic_account, a.analytic_account_id,a.sbu,MACT.mo_pct_ref,a_main.from_date,
+group by  a.accrual_id, a.analytic_account, a.analytic_account_id,a.sbu,MACT.mo_pct_ref,a_main.from_date,A.WIP_ACCOUNT_ID,
 	a_main.to_date order by analytic_account_id
 ) aad on aad.accrual_id = maa.id	
 join account_analytic_account aaa on aaa.id =aad.analytic_account_id
@@ -470,7 +464,8 @@ ROW_NUMBER() OVER (ORDER BY NT.ALLOCATION - TRUNC(NT.ALLOCATION,5) DESC) AS rn,
 nt.sbu,
 nt.is_invoiced,
  nt.invoiced_qty,
-nt.mo_done_qty
+nt.mo_done_qty,
+NT.WIP_ACCOUNT_ID
 FROM 
 NOT_TALLY NT
 ), final_data as(
@@ -491,12 +486,13 @@ invoiced_qty,
     END ALLOCATION,
     percentage,
     sbu,
-    is_invoiced
+    is_invoiced,
+	WIP_ACCOUNT_ID
 FROM
 MO_RANKED
 where lower(sbu) = case when '$sbu' = '' then lower(sbu) else lower('$sbu') end
-and is_invoiced = 
-case when '$is_wip' = 't' then true else is_invoiced end
+and is_invoiced = case when '$is_wip' = 't' then true else is_invoiced end
+and wip_account_id = $wip_params
 )
 $addQuery
 ";
@@ -508,4 +504,4 @@ $addQuery
 
 
 
-echo json_encode('');
+echo json_encode($message);

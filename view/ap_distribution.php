@@ -134,13 +134,10 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
     </select> -->
     <input type="month" name="month_year" id="yearMonthSelect" class="form-control" style="width:250px; display:unset !important">
     <button class="btn btn-success" id="btnRunDist">Run Distribution</button>
-    <button class="btn btn-primary" id="btnModalAccrual">Add Accrual</button>
+    <button class="btn btn-primary" id="btnModalAccrual">Add Item</button>
 
     <button class="btn btn-warning" id="btnInsertToOdoo">Insert to Odoo</button>
 
-    <?php if ($_SESSION['ppc']['emp_no'] == '10929' || $_SESSION['ppc']['emp_no'] == '8228'  || $_SESSION['ppc']['emp_no'] == '10768' || $_SESSION['ppc']['emp_no'] == '10947' || $_SESSION['ppc']['emp_no'] == '9784' || $_SESSION['ppc']['emp_no'] == '10761') { ?>
-        <button class="btn btn-danger" id="btnResetEntries">Reset Entries</button>
-    <?php } ?>
 
     <!-- <?php if ($_SESSION['ppc']['emp_no'] == '10929' || $_SESSION['ppc']['emp_no'] == '8228'  || $_SESSION['ppc']['emp_no'] == '10768' || $_SESSION['ppc']['emp_no'] == '10947') { ?>
         <label for="auto-switch">AUTO INSERT TO ODOO</label>
@@ -153,12 +150,12 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
     <table id="distTable" class="table table-bordered table-striped" style="width:100%">
         <thead>
             <tr>
-                <th>Accrual ID</th>
+                <th>Item ID</th>
                 <th>Credit Account</th>
 
-                <th>Total Accrual Value</th>
+                <th>Total Value</th>
                 <th>Dist Category</th>
-                                <th>Journal Account</th>
+                <th>Journal Account</th>
                 <th>Debit Account</th>
                 <th>From Date</th>
                 <th>To Date</th>
@@ -315,11 +312,12 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     <table class="table table-bordered" id="formTbl">
                         <thead>
                             <tr>
-                                <th>Accrual ID</th>
+                                <th>Item ID</th>
                                 <th>Credit Account</th>
 
-                                <th>Total Accrual Value</th>
+                                <th>Total Value</th>
                                 <th>Dist Category</th>
+                                <th>Journal Name</th>
                                 <th>Debit Account</th>
                                 <th>Action</th>
                                 <!-- <th>Account Name</th>
@@ -380,6 +378,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             <th>Credit Account</th>
                             <th>Total Value</th>
                             <th>Dist Category</th>
+                            <th>Journal Account</th>
                             <th>From Date</th>
                             <th>To Date</th>
                             <th></th>
@@ -412,6 +411,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         let addAccrualTbl;
         let accounts_tagged_global = [];
         let dist_template_global = [];
+        let journal_acc_global = [];
         let accrualTableInitialized = false;
         let currentMonthYearValue = $('#yearMonthSelect').val();
 
@@ -447,6 +447,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 removeDisabledAttr($row, '.distribution-input'); // function in helpers.js
                 removeDisabledAttr($row, '.disttemplateSelect'); // function in helpers.js
                 removeDisabledAttr($row, '.journalAccTemp');
+                removeDisabledAttr($row, '.fromDateInput');
+                removeDisabledAttr($row, '.toDateInput');
                 $btn.data('btn', 'save');
                 $icon.removeClass('fa-pencil').addClass('fa-save');
 
@@ -458,8 +460,15 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 new_acc_value = $row.find(".distribution-input").val()
                 new_template_id = $row.find(".disttemplateSelect").val()
                 new_journal_id = $row.find(".journalAccTemp").val()
+                let new_from_date = $row.find(".fromDateInput").val();
+                let new_to_date = $row.find(".toDateInput").val();
                 // console.log(new_template_id, new_acc_value, new_credit_to_id)
                 // return; 
+
+                if (new_from_date && new_to_date && new_from_date > new_to_date) {
+                    swal("Warning", "Invalid date range.", "warning");
+                    return;
+                }
                 swal({
                         title: "Are you sure?",
                         text: "once submitted, you cannot revert this action",
@@ -476,13 +485,16 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         if (isConfirm) {
                             startLoading('body')
                             $.ajax({
-                                url: "ajax/transaction/update_accrual.php",
+                                url: "ajax/transaction/update_ap_accrual.php",
                                 type: 'post',
                                 dataType: "json",
                                 data: {
                                     new_credit_to_id: new_credit_to_id,
                                     new_acc_value: new_acc_value,
                                     new_template_id: new_template_id,
+                                    new_journal_id: new_journal_id,
+                                    new_from_date: new_from_date,
+                                    new_to_date: new_to_date,
                                     accrual_id: id
                                 },
                                 success: function(data) {
@@ -513,7 +525,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             row.find(".accountSelect").val(rowData.credit_to_id).prop("disabled", true).trigger("change");
             row.find(".distribution-input").val(rowData.total_accrual_value).prop("disabled", true);
             row.find(".disttemplateSelect").val(rowData.category_id).prop("disabled", true).trigger("change");
-             row.find(".journalAccTemp").val(rowData.journal_id).prop("disabled", true).trigger("change");
+            row.find(".journalAccTemp").val(rowData.journal_id).prop("disabled", true).trigger("change");
 
 
             row.find('.saveEditBtn')
@@ -679,15 +691,16 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         $('#yearMonthSelect').on('change', function() {
             const newMonthSelected = $(this).val();
 
-            // check if may laman DataTable
-            if (distTable.rows().count() > 0) {
-                alert("You can't change date when you have active accrual.");
 
-                // revert selection
-                $(this).val(currentMonthYearValue);
+            // // check if may laman DataTable
+            // if (distTable.rows().count() > 0) {
+            //     alert("You can't change date when you have active accrual.");
 
-                return;
-            }
+            //     // revert selection
+            //     $(this).val(currentMonthYearValue);
+
+            //     return;
+            // }
 
             // update current value
             // currentMonthYearValue = newValue;
@@ -699,9 +712,10 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         $('#btnInsertToOdoo').on('click', async function() {
             // fetchAccrual()
             date_range_id = $(this).data('id');
+            year_month = $(this).data('yearmonth-id');
             // console.log(date_range_id)
 
-            previewJournalEntries(date_range_id)
+            previewJournalEntries(date_range_id, year_month)
             $('#previewInsertToOdoo').modal('show');
             $('#previewInsertToOdoo #btnSubmitToOdoo').attr('data-id', date_range_id)
         }); // END
@@ -750,6 +764,10 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         width: 'resolve',
                         placeholder: 'Select Templates'
                     });
+                    $('.journalAccount').select2({
+                        width: 'resolve',
+                        placeholder: 'Select Journal'
+                    });
                     $('#addAccrualTbl tbody tr').each(function() {
                         validateDistRow($(this));
                     });
@@ -766,7 +784,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             accounts_tagged_global.forEach(j => {
 
 
-                                if (j.full_name.toLowerCase().includes("accrued")) {
+                                if (j.full_name) {
 
 
                                     html += `<option value="${j.id}" ${row.credit_to_id== j.id ? 'selected' : ''}>${j.full_name}</option>`;
@@ -841,6 +859,40 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     {
                         data: null,
                         render: function(row) {
+
+                            html = '';
+
+                            // isError = '';
+
+                            // if (row.category_id) {
+
+                            //     tpl = dist_template_global.find(t => t.id == row.category_id);
+
+                            //     if (tpl && parseInt(tpl.total_percentage) !== 100) {
+                            //         isError = 'dist-error';
+                            //     }
+                            // }
+
+                            html += `<select class="journalAccTemp journalAccount">`;
+                            html += `<option value="">Select Template</option>`;
+
+                            journal_acc_global.forEach(j => {
+                                html += `<option 
+                                        value="${j.journal_id}" 
+                                        data-name="${j.journal_acc}"
+                                        ${row.journal_id == j.journal_id ? 'selected' : ''}>
+                                        ${j.journal_acc}
+                                    </option>`;
+                            });
+
+                            html += `</select>`;
+
+                            return html;
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function(row) {
                             return `
                             <input type="date"
                                 class="form-control from-date"
@@ -904,7 +956,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
             swal({
                 title: "Remove Row?",
-                text: "This accrual row will be deleted.",
+                text: "This row will be deleted.",
                 type: "warning",
                 showCancelButton: true,
                 confirmButtonColor: "#d33",
@@ -1327,56 +1379,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         })
 
 
-        $('#btnResetEntries').on('click', function() {
-            // date_range_id = $(this).attr('data-id');
-            // console.log(date_range_id);
-            // return
-            swal({
-                    title: "Are you sure you want to Reset All entries?",
-                    text: "once submitted, you cannot revert this transaction",
-                    type: "warning",
-                    showCancelButton: true,
-                    confirmButtonColor: '#DD6B55',
-                    confirmButtonText: 'Yes, I am sure!',
-                    cancelButtonText: "No, cancel it!",
-                    closeOnConfirm: false,
-                    closeOnCancel: false
-                },
-                function(isConfirm) {
 
-                    if (isConfirm) {
-
-                        $.ajax({
-                            url: "ajax/transaction/reset_entries.php",
-                            method: "POST",
-                            dataType: "json",
-                            // data: {
-                            //     month_id: date_range_id
-                            // },
-                            success: function(data) {
-                                if (data.status = 'success') {
-
-                                    // $('#previewInsertToOdoo').modal('hide');
-                                    swal(
-                                        "Success",
-                                        "All entries have been Reset",
-                                        "success"
-                                    );
-                                    window.location.reload();
-                                }
-                                // init();
-
-                            }
-                        })
-                        // insertToOdoo(date_range_id) //lagay mo month_id or date range id
-                        swal.close();
-                    } else {
-                        swal("Transaction cancelled", "", "error");
-                    }
-
-                });
-
-        })
 
         ///////////////////////////////////// FUNCTION SIDE ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1421,8 +1424,10 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 let dist_template = $(this).find('.distCat').val();
                 let from_date = $(this).find('.from-date').val();
                 let to_date = $(this).find('.to-date').val();
+                let journal_id = $(this).find('.journalAccount').val();
+                let journal_acc = $(this).find('.journalAccount option:selected').data('name');
 
-                if (!credit_account || !accrual_value || !dist_template || accrual_value === '.' || !from_date || !to_date) {
+                if (!credit_account || !accrual_value || !dist_template || accrual_value === '.' || !from_date || !to_date || !journal_id || !journal_acc) {
 
                     swal(
                         "Incomplete Fields",
@@ -1435,6 +1440,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     if (!dist_template) $(this).find('.distCat').addClass('is-invalid');
                     if (!from_date) $(this).find('.from-date').addClass('is-invalid');
                     if (!to_date) $(this).find('.to-date').addClass('is-invalid');
+                    if (!journal_id) $(this).find('.journalAccount').addClass('is-invalid');
+                    if (!journal_acc) $(this).find('.journalAccount').addClass('is-invalid');
 
                     hasError = true;
                     return false;
@@ -1445,13 +1452,16 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 $(this).find('.distCat').removeClass('is-invalid');
                 $(this).find('.from-date').removeClass('is-invalid');
                 $(this).find('.to-date').removeClass('is-invalid');
+                $(this).find('.journalAccount').removeClass('is-invalid');
 
                 data.push({
                     credit_account: credit_account,
                     accrual_value: accrual_value,
                     dist_template: dist_template,
                     from_date: from_date,
-                    to_date: to_date
+                    to_date: to_date,
+                    journal_id: journal_id,
+                    journal_acc: journal_acc
                 });
 
             });
@@ -1461,31 +1471,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             return data;
         }
 
-        // function insertAccrual(acc_data, month_id) {
-        //     // console.log($('#auto_insert_switch').prop('checked'));
-        //     // var autoInsertChecked = $('#auto_insert_switch').prop('checked');
 
-        //     $.ajax({
-        //         type: 'POST',
-        //         url: 'ajax/transaction/insert_accrual.php',
-        //         // dataType: 'json',
-        //         // contentType: 'application/json',
-        //         dataType: 'json',
-        //         data: {
-        //             month_id: month_id,
-        //             acc_data: JSON.stringify(acc_data),
-        //         },
-        //         success: function(response) {
-        //             init() 
-        //             swal(
-        //                 "Success", 
-        //                 "Accrual Generated",
-        //                 "success"
-        //             );
-        //             $('#accrualTagging').modal('hide')
-        //         }
-        //     });
-        // }
 
         function insertAccrual(acc_data, month_id, year_month) {
 
@@ -1522,7 +1508,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
             $.ajax({
                 type: 'POST',
-                url: 'ajax/transaction/insert_accrual.php',
+                url: 'ajax/transaction/insert_accrual_ap.php',
                 dataType: 'json',
                 data: {
                     month_id: month_id,
@@ -1557,8 +1543,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 url: 'ajax/fetch/fetch_dist_template.php',
                 dataType: 'json' // 👈 THIS
             });
-}
-                    async function journalAccList() {
+        }
+        async function journalAccList() {
             return $.ajax({
                 type: 'get',
                 url: 'ajax/fetch/fetch_journal_acc.php',
@@ -1574,7 +1560,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
         function fetchAccrual(newMonthSelected) {
             $.ajax({
-                url: "ajax/fetch/fetch_accrual.php",
+                url: "ajax/fetch/fetch_ap_accrual.php",
                 method: "POST",
                 data: {
                     year_month: newMonthSelected
@@ -1584,7 +1570,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     $('#btnExcel').show();
                     // console.log(data);
 
-
+                    initDistTable();
                     active_acc = data['active_accrual']
                     date_range_val = data['date_range'];
                     let grouped = {};
@@ -1609,11 +1595,11 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         $('#btnRevert').attr('data-id', month_id);
 
 
-                        const distributed = date_range_val['is_dept_distributed'] === 't';
-                        $('#btnRunDist, #btnModalAccrual').toggle(!distributed);
-                        $('#btnInsertToOdoo').toggle(date_range_val['odoo_inserted'] !== 'True' && date_range_val['is_dept_distributed'] === 't');
+                        const distributed = date_range_val['is_ap_distributed'] === 't';
+                        $('#btnRunDist').toggle(!distributed);
+                        $('#btnInsertToOdoo').toggle(date_range_val['odoo_inserted'] !== 'True' && date_range_val['is_ap_distributed'] === 't');
 
-
+                        $('#btnModalAccrual').toggle(!distributed);
                     } else {
                         console.log('bat wala')
                         $('#btnRunDist').attr('data-id', '');
@@ -1629,7 +1615,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                     if (active_acc) {
 
-                        $('#yearMonthSelect').prop('readonly', true);
+                        // $('#yearMonthSelect').prop('readonly', true);
                         active_acc.forEach(row => {
                             grouped[row.id] = row;
                         });
@@ -1659,7 +1645,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         width: 'resolve',
                         placeholder: 'Select Templates'
                     });
-                                        $('.journalAccTemp').select2({
+                    $('.journalAccTemp').select2({
                         width: 'resolve',
                         placeholder: 'Select Journal'
                     });
@@ -1679,7 +1665,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                             accounts_tagged_global.forEach(j => {
 
-                                if (j.full_name.toLowerCase().includes("accrued")) {
+                                if (j.full_name) {
                                     html += `<option value="${j.id}" ${row.credit_to_id== j.id ? 'selected' : ''}>${j.full_name}</option>`;
                                 }
 
@@ -1723,7 +1709,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             return html;
                         }
                     },
-                                        {
+                    {
                         data: null,
                         render: function(row) {
 
@@ -1734,7 +1720,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                             journal_acc_global.forEach(j => {
 
-                                html += `<option value="${j.journal_id}" ${row.journal_acc== j.journal_id ? 'selected' : ''}>${j.journal_acc}</option>`;
+                                html += `<option value="${j.journal_id}" ${row.journal_id== j.journal_id ? 'selected' : ''}>${j.journal_acc}</option>`;
 
 
                             });
@@ -1780,17 +1766,32 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             return account_per_accrual;
                         }
                     },
+                    // {
+                    //     data: 'from_date'
+                    // },
+                    // {
+                    //     data: 'to_date'
+                    // },
+                    // Added by Ivan
                     {
-                        data: 'from_date'
+                        data: 'from_date',
+                        render: function(data, type, row) {
+                            let value = data ? data : '';
+                            return `<input type="date" class="form-control fromDateInput" value="${value}" disabled>`;
+                        }
                     },
                     {
-                        data: 'to_date'
+                        data: 'to_date',
+                        render: function(data, type, row) {
+                            let value = data ? data : '';
+                            return `<input type="date" class="form-control toDateInput" value="${value}" disabled>`;
+                        }
                     },
                     {
                         data: null,
                         render: function(row) {
                             // Added by Ivan Christian Afan
-                            let disabled = row.is_dept_distributed === 't' ? 'disabled' : '';
+                            let disabled = row.is_ap_distributed === 't' ? 'disabled' : '';
                             return `
                         <button class="btn btn-primary btn-sm editBtn" data-btn="edit"
                                 ${disabled}
@@ -1823,50 +1824,26 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         }
 
         function generateJournalEntries(month_id, yearMonth) {
-            // console.log($('#auto_insert_switch').prop('checked'));
-            var autoInsertChecked = $('#auto_insert_switch').prop('checked');
 
             $.ajax({
                 type: 'POST',
                 url: 'ajax/transaction/save_distributed_journal.php',
                 dataType: 'json',
                 data: {
-                    month_id: month_id
+                    month_id: month_id,
+                    is_accrual: false
                 },
 
                 success: function(response) {
                     console.log(response);
 
-                    // $.ajax({ 
-                    //     type: 'POST',
-                    //     url: 'ajax/transaction/send_journal_email.php',
-                    //     dataType: 'json',
-                    //     data: {
-                    //         yearMonth: yearMonth,
-                    //         month_id: month_id,
-                    //     },
 
-                    //     success: function(mailRes) {
                     init();
-                    previewJournalEntries(month_id)
+                    previewJournalEntries(month_id, yearMonth)
                     $('#previewInsertToOdoo').modal('show');
                     $('#previewInsertToOdoo #btnSubmitToOdoo').attr('data-id', month_id)
 
                     stopLoading('body')
-                    // if (autoInsertChecked) {
-
-                    // } else {
-                    //     swal(
-                    //         "Success",
-                    //         "Journal Generated",
-                    //         "success"
-                    //     );
-                    //     // window.location =
-                    //     //     "generated_distribution.php?id=" + month_id + "&ym=" + yearMonth;
-                    // }
-
-                    //         }
-                    //     });
 
                 }
             });
@@ -2327,7 +2304,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 method: "POST",
                 dataType: "json",
                 data: {
-                    month_id: date_range_id
+                    month_id: date_range_id,
+                    is_accrual: false
                 },
                 success: function(data) {
 
@@ -2355,7 +2333,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             })
         }
 
-        function previewJournalEntries(date_range_id) {
+        function previewJournalEntries(date_range_id, yearMonth) {
             if (PreviewDistTable) {
                 PreviewDistTable.clear().draw();
                 PreviewDistTable.destroy();
@@ -2392,6 +2370,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     },
                     {
                         data: "distribution_category"
+                    },
+                    {
+                        data: "journal_name"
                     },
                     {
                         data: null,
@@ -2446,11 +2427,11 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             });
 
             $.ajax({
-                url: "ajax/fetch/fetch_accrual.php",
+                url: "ajax/fetch/fetch_ap_accrual.php",
                 method: "POST",
-                // data: {
-                //     year_month: yearMonth
-                // },
+                data: {
+                    year_month: yearMonth
+                },
                 dataType: "json",
                 success: function(data) {
                     $('#btnExcel').show();
@@ -2468,9 +2449,10 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         $('#btnInsertToOdoo').attr('data-id', month_id);
                         $('#btnModalAccrual').attr('data-id', month_id);
 
-                        if (date_range_val['is_dept_distributed'] == 't') {
+                        if (date_range_val['is_ap_distributed'] == 't') {
                             $('#btnRunDist').hide();
                             $('#btnModalAccrual').hide();
+
 
                         } else {
                             $('#btnRunDist').show();
@@ -2513,7 +2495,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     window.fullData = data;
                 }
             });
-        } //
+        }
 
         function deleteAccrual(acc_id) {
 

@@ -71,9 +71,43 @@ if ($res && pg_num_rows($res) > 0) {
 
             <li class="<?php echo ($basename_server == 'generated_distribution.php' ? 'active' : ''); ?>">
                 <a href="generated_distribution.php" class="waves-effect waves-block">
-                    <i class="material-icons">bookmark</i>
+                    <i class="material-icons">dashboard</i>
                     <span>Distributed A/P</span>
                 </a>
+            </li>
+            <!-- <li class="<?php echo ($basename_server == 'ap_distribution.php' ? 'active' : ''); ?>">
+                <a href="ap_distribution.php" class="waves-effect waves-block">
+                    <i class="material-icons">bookmark</i>
+                    <span>A/P Distribution</span>
+                </a>
+            </li>
+            <li class="<?php echo ($basename_server == 'custom_distribution.php' ? 'active' : ''); ?>">
+                <a href="custom_distribution.php" class="waves-effect waves-block">
+                    <i class="material-icons">bookmark</i>
+                    <span>Custom Distribution</span>
+                </a>
+            </li> -->
+
+            <li class="<?php echo (($basename_server == 'admin_maint.php') ? 'active' : ''); ?>">
+                <a href="javascript:void(0);" class="waves-effect waves-block menu-toggle">
+                    <i class="material-icons">bookmark</i>
+                    <span>Distribution</span>
+                </a>
+                <ul class="ml-menu">
+                    <li class="<?php echo ($basename_server == 'ap_distribution.php' ? 'active' : ''); ?>">
+                        <a href="ap_distribution.php" class="waves-effect waves-block">
+
+                            <span>A/P Distribution</span>
+                        </a>
+                    </li>
+                    <li class="<?php echo ($basename_server == 'custom_distribution.php' ? 'active' : ''); ?>">
+                        <a href="custom_distribution.php" class="waves-effect waves-block">
+
+                            <span>Custom Distribution</span>
+                        </a>
+                    </li>
+
+                </ul>
             </li>
 
             <?php if ($_SESSION['ppc']['admin'] == "1" || $hasAdminAccess) { ?>
@@ -134,7 +168,7 @@ if ($res && pg_num_rows($res) > 0) {
                             </li>
                             <li class="<?php echo ($basename_server == 'category_acc_maintenance.php' ? 'active' : ''); ?>">
                                 <a href="category_acc_maintenance.php" class="waves-effect waves-block">
-                                    <span>Category Maintenance</span>
+                                    <span>Template Maintenance</span>
                                 </a>
                             </li>
                             <li class="<?php echo ($basename_server == 'account_tagging.php' ? 'active' : ''); ?>">

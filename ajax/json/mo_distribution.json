@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "value": "EH",
+    "name": "MO Earned Hours"
+  },
+    { 
+    "id": 2,
+    "value": "QTY",
+    "name": "MO Quantity"
+  },
+    { 
+    "id": 3,
+    "value": "UR",
+    "name": "Usage Rate"
+  }
+]

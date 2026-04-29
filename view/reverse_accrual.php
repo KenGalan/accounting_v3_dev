@@ -331,6 +331,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             avp_global = await fetchAPV();
 
             initDistTable();
+            // console.log()
             // fetchAccrual();
             await fetchAccrual();
 

@@ -5,26 +5,30 @@ session_start();
 $db = new Postgresql();
 $db_ken = new PostgresqlKen();
 $month_id = $_POST['month_id'];
+$is_accrual = $_POST['is_accrual'];
 $user = $_SESSION['ppc']['emp_no'];
+
 if (!isset($_SESSION['ppc']['emp_no'])) : $user = 0;
     echo json_encode($data);
     exit;
 endif; //NOT ISSET SESSION
 
-
+$accrual_where = $is_accrual == 'true' ? '' : 'NOT';
 
 $selectDateRange =
     $db_ken->fetchAll("SELECT 
 DISTINCT
 to_char(FROM_DATE,'YYYY-MM-DD') start_date, 
-to_char(TO_DATE, 'YYYY-MM-DD') end_date
+to_char(TO_DATE, 'YYYY-MM-DD') end_date,
+to_char(TO_DATE, 'MM/DD/YYYY') end_date_slash
 , TO_CHAR(to_date(to_char(FROM_DATE ,'YYYY-MM'),'YYYY-MM') + INTERVAL '1 month - 1 day', 'MM/DD/YYYY') LAST_DATE_OF_MONTH
-FROM M_ACC_ACCRUAL WHERE ACTIVE AND IS_ACCRUAL");
+FROM M_ACC_ACCRUAL WHERE ACTIVE AND $accrual_where IS_ACCRUAL");
 
 if ($selectDateRange) {
     foreach ($selectDateRange as $date_range) {
         $from_date = $date_range['start_date'];
         $to_date = $date_range['end_date'];
+        $to_date_slash = $date_range['end_date_slash'];
         $last_date_of_month = $date_range['last_date_of_month'];
 
         $qCheck = "SELECT * FROM M_ACC_MO_WIP WHERE FROM_DATE = TO_dATE('$from_date','YYYY-MM-DD')  AND TO_DATE = TO_dATE('$to_date','YYYY-MM-DD')";
@@ -33,8 +37,8 @@ if ($selectDateRange) {
         }
         // exit;
 
-        $qmos = "	--with mos as (SELECT DISTINCT MO FROM M_ACC_MO_WIP WHERE FROM_DATE = TO_dATE('$from_date','YYYY-MM-DD')  AND TO_DATE = TO_dATE('$to_date','YYYY-MM-DD') AND NOT IS_INVOICED),
-       WITH  mo_with_trx AS (
+        $qmos = "	with mos as (SELECT DISTINCT MO,IS_INVOICED FROM M_ACC_MO_WIP WHERE MONTH_ID != $month_id),
+         mo_with_trx AS (
            SELECT DISTINCT mp.name, mp.id AS mo_id
            FROM mrp_production mp
            JOIN (
@@ -45,7 +49,9 @@ if ($selectDateRange) {
                    AND TO_TIMESTAMP('$to_date','YYYY-MM-DD') + INTERVAL '1 day 5 hours 59 minutes'
                    and state !='cancel'
            ) mw ON mw.production_id = mp.id
+           LEFT JOIN MOS ON MOS.MO = MP.NAME  AND MOS.IS_INVOICED
         WHERE MP.STATE != 'cancel'
+        AND MOS.MO IS NULL
         ),all_mos AS (
            SELECT 
                mp.id AS mo_id, 
@@ -70,7 +76,8 @@ if ($selectDateRange) {
            left join stock_move_line sml on sml.picking_id = sp.id  and mp.id = sml.manufacturing_order
     left JOIN (select * from stock_move_line where location_dest_id =8) sml2 on sml2.reference = mp.name
            LEFT JOIN account_move_stock_picking_batch_rel amspb ON amspb.stock_picking_batch_id = spb.id
-           LEFT JOIN account_move am ON am.id = amspb.account_move_id and am.invoice_date <= TO_DATE('$last_date_of_month','MM/DD/YYYY') and am.state !='cancel'
+          -- LEFT JOIN account_move am ON am.id = amspb.account_move_id and am.invoice_date <= TO_DATE('$last_date_of_month','MM/DD/YYYY') and am.state !='cancel'
+           LEFT JOIN account_move am ON am.id = amspb.account_move_id and am.invoice_date <= TO_DATE('$to_date','YYYY-MM-DD') and am.state !='cancel'
            JOIN mo_with_trx mwt ON mwt.mo_id = mp.id
            group by
              mp.id, 
@@ -138,7 +145,58 @@ if ($selectDateRange) {
        ) mw ON mw.production_id = fm.mo_id
        LEFT JOIN mrp_routing_workcenter mrw ON mw.operation_id = mrw.id
        WHERE 
+       FM.STATUS !='INVOICED' AND
+       fm.mo_status NOT IN ('cancel','draft','planned') 
+       GROUP BY fm.mo, pt.name, pc.name, mp.lot_no, mp.customer_name, fm.mo_status, fm.status, max_wo,fm.mo_id,pt.id,
+       CASE WHEN PC.NAME LIKE 'DIE%' THEN
+       CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
+       ELSE
+       TRIM(SPLIT_PART(PC.NAME, ' ', 1))
+     END,
+     fm.invoiced_qty,
+     fm.mo_done_qty
+     UNION ALL
+	        SELECT
+           fm.mo,
+       fm.mo_id,
+           pt.name AS device,
+           pt.id as device_id,
+           pc.name AS category,
+           mp.lot_no,
+           mp.customer_name,
+           SUM(mrw.time_cycle_manual) AS total_labor,
+           '' AS total_multiplied_in_quantity_done,
+           '' AS earned_hrs,
+           fm.mo_status,
+           CASE WHEN SUM(mrw.time_cycle_manual) IS NULL 
+               THEN 'NO TRANSACTION BETWEEN THE MONTHEND RANGE' 
+               ELSE fm.status END AS status,
+           max_wo,
+           CASE WHEN PC.NAME LIKE 'DIE%' THEN
+       CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
+       ELSE
+       TRIM(SPLIT_PART(PC.NAME, ' ', 1))
+       END AS SBU,
+       fm.invoiced_qty,
+       fm.mo_done_qty
+       FROM filtered_mo fm
+       JOIN mrp_production mp ON mp.id = fm.mo_id
+       JOIN product_product pp ON pp.id = mp.product_id
+       JOIN product_template pt ON pt.id = pp.product_tmpl_id
+       JOIN product_category pc ON pc.id = pt.categ_id
+       LEFT JOIN (
+           SELECT MAX(ID) OVER (PARTITION BY production_id) AS max_wo, *
+           FROM mrp_workorder
+           WHERE date_finished + INTERVAL '8 hours' > 
+               TO_TIMESTAMP('$from_date', 'YYYY-MM-DD') + INTERVAL '6 hours' 
+               --AND TO_TIMESTAMP('$to_date', 'YYYY-MM-DD') + INTERVAL '1 day 5 hours 59 minutes'
+               and state = 'done'
+       ) mw ON mw.production_id = fm.mo_id
+       LEFT JOIN mrp_routing_workcenter mrw ON mw.operation_id = mrw.id
+       WHERE 
       -- fm.status != 'INVOICED BEFORE MONTH END' AND 
+	  FM.STATUS = 'INVOICED' AND
+	--  fm.mo ='MO898804' and
        fm.mo_status NOT IN ('cancel','draft','planned') 
        GROUP BY fm.mo, pt.name, pc.name, mp.lot_no, mp.customer_name, fm.mo_status, fm.status, max_wo,fm.mo_id,pt.id,
        CASE WHEN PC.NAME LIKE 'DIE%' THEN
@@ -172,69 +230,72 @@ if ($selectDateRange) {
 '' REMARKS
    FROM set_status a
    LEFT JOIN mrp_workorder mw ON mw.id = a.max_wo --order by eh_percentage_per_mo
+
+   UNION ALL
+   select
+  mp.name mo,
+  mp.id mo_id,
+  pt.name device,
+  pt.id device_id,
+    CASE WHEN PC.NAME LIKE 'DIE%' THEN
+       CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
+       ELSE
+       TRIM(SPLIT_PART(PC.NAME, ' ', 1))
+       END AS SBU,
+  pc.name category,
+  mp.LOT_NO LOT_NUMBER,
+  mp.customer_name,
+  sml2.qtY_done quantity_done,
+  null::numeric total_labor,
+  null::numeric total_multiplied_in_quantity_done,
+  null::numeric earned_hrs,
+  null::numeric qty_percentage_per_mo,
+  null::numeric eh_percentage_per_mo,
+  mp.state mo_status,
+  true inv_status,
+  sum(sml.qty_done) invoiced_qty,
+  sml2.qtY_done mo_done_qty,
+  'INVOICED BUT NO MOVEMENT' REMARKS
+  from
+  mrp_production mp
+  JOIN PRODUCT_PRODUCT PP ON PP.ID = MP.PRODUCT_ID
+  JOIN PRODUCT_TEMPLATE PT ON PT.ID = PP.PRODUCT_TMPL_ID
+  JOIN PRODUCT_CATEGORY PC ON PC.ID =PT.CATEG_ID
+  left join mrp_production_stock_picking_rel mpsp on mpsp.mrp_production_id = mp.id
+  left join stock_picking sp on sp.id = mpsp.stock_picking_id
+  left join stock_picking_batch spb on spb.id = sp.batch_id
+  join stock_move_line sml on sml.picking_id = sp.id  and mp.id = sml.manufacturing_order
+  left JOIN (select * from stock_move_line where location_dest_id =8) sml2 on sml2.reference = mp.name
+  left join account_move_stock_picking_batch_rel amsp on amsp.stock_picking_batch_id = spb.id
+  left join (select * from account_move where NAME LIKE 'INV/%'  ) am on am.id = amsp.account_move_id
+  right join mos on mos.mo = mp.name AND  NOT MOS.IS_INVOICED
+    LEFT JOIN mo_with_trx MWT ON MWT.NAME = MOS.MO
+  where --mp.name ='MO902351' and
+  spb.state ='done'
+  and am.invoice_date::date between to_date('$from_date','YYYY-MM-DD') and to_date('$to_date','YYYY-MM-DD')
+    AND MWT.NAME IS NULL
+  group by 
+  mp.name,
+  mp.id,
+  pt.name,
+  pt.id,
+  CASE WHEN PC.NAME LIKE 'DIE%' THEN
+       CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
+       ELSE
+       TRIM(SPLIT_PART(PC.NAME, ' ', 1))
+       END,
+  pc.name,
+  mp.LOT_NO,
+  mp.customer_name,
+  sml2.qtY_done,
+  mp.state
  ";
 
-        //  UNION ALL
-        //  select
-        // mp.name mo,
-        // mp.id mo_id,
-        // pt.name device,
-        // pt.id device_id,
-        //   CASE WHEN PC.NAME LIKE 'DIE%' THEN
-        //      CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
-        //      ELSE
-        //      TRIM(SPLIT_PART(PC.NAME, ' ', 1))
-        //      END AS SBU,
-        // pc.name category,
-        // mp.LOT_NO LOT_NUMBER,
-        // mp.customer_name,
-        // sml2.qtY_done quantity_done,
-        // null::numeric total_labor,
-        // null::numeric total_multiplied_in_quantity_done,
-        // null::numeric earned_hrs,
-        // null::numeric qty_percentage_per_mo,
-        // null::numeric eh_percentage_per_mo,
-        // mp.state mo_status,
-        // true inv_status,
-        // sum(sml.qty_done) invoiced_qty,
-        // sml2.qtY_done mo_done_qty,
-        // 'INVOICED BUT NO MOVEMENT' REMARKS
-        // from
-        // mrp_production mp
-        // JOIN PRODUCT_PRODUCT PP ON PP.ID = MP.PRODUCT_ID
-        // JOIN PRODUCT_TEMPLATE PT ON PT.ID = PP.PRODUCT_TMPL_ID
-        // JOIN PRODUCT_CATEGORY PC ON PC.ID =PT.CATEG_ID
-        // left join mrp_production_stock_picking_rel mpsp on mpsp.mrp_production_id = mp.id
-        // left join stock_picking sp on sp.id = mpsp.stock_picking_id
-        // left join stock_picking_batch spb on spb.id = sp.batch_id
-        // join stock_move_line sml on sml.picking_id = sp.id  and mp.id = sml.manufacturing_order
-        // left JOIN (select * from stock_move_line where location_dest_id =8) sml2 on sml2.reference = mp.name
-        // left join account_move_stock_picking_batch_rel amsp on amsp.stock_picking_batch_id = spb.id
-        // left join (select * from account_move where NAME LIKE 'INV/%'  ) am on am.id = amsp.account_move_id
-        // right join mos on mos.mo = mp.name
-        //   LEFT JOIN mo_with_trx MWT ON MWT.NAME = MOS.MO
-        // where --mp.name ='MO902351' and
-        // spb.state ='done'
-        // and am.invoice_date::date between to_date('$from_date','YYYY-MM-DD') and to_date('$to_date','YYYY-MM-DD')
-        //   AND MWT.NAME IS NULL
-        // group by 
-        // mp.name,
-        // mp.id,
-        // pt.name,
-        // pt.id,
-        // CASE WHEN PC.NAME LIKE 'DIE%' THEN
-        //      CONCAT(TRIM(SPLIT_PART(PC.NAME, ' ', 1)), ' ',TRIM(SPLIT_PART(PC.NAME, ' ', 2)))
-        //      ELSE
-        //      TRIM(SPLIT_PART(PC.NAME, ' ', 1))
-        //      END,
-        // pc.name,
-        // mp.LOT_NO,
-        // mp.customer_name,
-        // sml2.qtY_done,
-        // mp.state
+
         $resultmos = $db->fetchAll($qmos);
 
-
+        // var_dump($resultmos);
+        // exit;
         //USE INSERT GET ID
         foreach ($resultmos as $item) {
             $mo = $item['mo'];
@@ -296,281 +357,553 @@ if ($selectDateRange) {
             $resultLineItems = $db_ken->insert('M_ACC_MO_WIP', $dataMoEntries);
         }
     }
-
-
     $q = "WITH categ_percentage as (
-        SELECT 
-     act.id act_id,
-         act.acc_category,
-         coalesce(sum(acd.distribution_percentage),0) acc_categ_percentage,
-     --ACD.distribution_percentage,
-         act.journal_id
-         FROM m_acc_category_tbl act
-         LEFT JOIN M_ACC_CATEGORY_ACCOUNTS ACA ON ACA.ACC_CATEGORY_ID = ACT.ID
-         left join m_acc_cost_distribution acd on acd.m_acc_category_id =ACA.ACC_CATEGORY_ID AND ACD.DEBIT_TO = ACA.ACCOUNT_ID
-         group by  act.id, act.acc_category			  
-     )
-        , detailed_percentage as (
-         select 
-         acd.distribution_percentage ,
-         acd.m_acc_category_id,
-         acd.analytic_account_id,
-         COALESCE(adg.dept_group, ADG2.DEPT_GROUP) DEPT_GROUP,
-         COALESCE(ADG.ID,ADG2.ID) DEPT_GROUP_ID,
-         COALESCE(aaa.name,ADG2.DEPT_GROUP) dept 
-         ,aaa.code,
-         acd.debit_to,
-         acd.wip_account,
-         cp.journal_id
-         from
-         m_acc_cost_distribution acd
-          left JOIN account_analytic_account aaa ON aaa.id = acd.analytic_account_id
-          left join m_acc_department_groups adg on adg.id =aaa.m_acc_group_id
-           LEFT JOIN categ_percentage CP ON CP.ACT_ID = ACD.m_acc_category_id 
-           LEFT JOIN M_ACC_DEPARTMENT_GROUPS ADG2 ON ADG2.ID = ACD.GROUP_ID
-            WHERE CP.acc_categ_percentage = 100
-          --  and acd.m_acc_category_id =1
-          order by m_acc_category_id, dept_group
-             )
-      ,accrual_entry as(
- SELECT 
-          maa.id accrual_id,
- MAA.TOTAL_ACCRUAL_VALUE total_debit,
-     DP.distribution_percentage,
-     trunc(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100),2) allocation_trunc,
-     MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100) allocation,
-     sum(trunc(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100),2)) over (partition by MAA.ID) total_allocation_trunc,
-         sum(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100)) over (partition by MAA.ID) total_allocation,
-     DP.dept_group,
-      DP.dept_group_ID,
-     DP.dept,
-         DP.analytic_account_id,
-         maa.credit_to,
-         dp.debit_to,
-         dp.wip_account,
-         dp.journal_id,
-          MAA.FROM_DATE,
-          MAA.TO_DATE
- FROM
-          M_ACC_ACCRUAL MAA
-          JOIN detailed_percentage DP ON DP.m_acc_category_id =MAA.DIST_CATEG_ID
-          WHERE maa.month_id = $month_id AND MAA.IS_ACCRUAL
-          --MAA.FROM_DATE = TO_dATE('2026-03-20','YYYY-MM-DD')  AND maa.TO_DATE = TO_dATE('2026-03-31','YYYY-MM-DD')
-          )
-              , ranked as(
-         select
- ae.accrual_id,
-     ae.total_debit,
-     ae.distribution_percentage,
-     ae.allocation - ae.allocation_trunc allocation_diff,
-     ae.allocation_trunc,
-     ((ae.total_allocation - ae.total_allocation_trunc)/0.01)::integer rows_to_adjust,
-     ROW_NUMBER() OVER (PARTITION BY ae.accrual_id ORDER BY ae.allocation - ae.allocation_trunc DESC) AS rn,
-     ae.dept_group,
-     ae.dept_group_ID,
-     ae.dept,
-             ae.analytic_account_id,
-                 ae.debit_to,
-                 ae.wip_account,
-                 ae.journal_id,
-                      AE.FROM_DATE,
-          AE.TO_DATE
-     from accrual_entry ae)
-     , final_DEPT_DIST as (
+    SELECT 
+ act.id act_id,
+     act.acc_category,
+     coalesce(sum(acd.distribution_percentage),0) acc_categ_percentage,
+ --ACD.distribution_percentage,
+     act.journal_id
+     FROM m_acc_category_tbl act
+     LEFT JOIN M_ACC_CATEGORY_ACCOUNTS ACA ON ACA.ACC_CATEGORY_ID = ACT.ID
+     left join m_acc_cost_distribution acd on acd.m_acc_category_id =ACA.ACC_CATEGORY_ID AND ACD.DEBIT_TO = ACA.ACCOUNT_ID
+     group by  act.id, act.acc_category			  
+ )
+    , detailed_percentage as (
      select 
-     accrual_id,
-     distribution_percentage,
-      CASE 
-             WHEN rn <= rows_to_adjust THEN allocation_trunc + 0.01
-             ELSE allocation_trunc
-         END AS debit_final,
-     dept_group,
-     dept_group_ID,
-     dept,
-         analytic_account_id,
-         debit_to,
-         wip_account,
-         journal_id,
-              FROM_DATE,
-          TO_DATE,
-         total_debit total_accrual_debit
-     from 
-     ranked
-     ), mfg as (
-          select ae.accrual_id,adm.mo,AE.debit_final,ADM.EARNED_HRS/SUM(adm.EARNED_HRS) OVER(PARTITION BY AE.ACCRUAL_ID) percentage,
-          ae.debit_final * ADM.EARNED_HRS/SUM(adm.EARNED_HRS) OVER(PARTITION BY AE.ACCRUAL_ID) mo_allocation,
-          adm.sbu ,
-          ae.FROM_DATE,
-          ae.TO_DATE,
-         ae.debit_to,
-         ae.wip_account,
-         ae.distribution_percentage,
-         ae.total_accrual_debit,
-         ae.journal_id
-         from final_dept_dist AE
-          JOIN M_ACC_MO_WIP ADM ON ADM.FROM_DATE = AE.FROM_DATE  AND ADM.TO_DATE = AE.TO_DATE AND ADM.REMARKS !='INVOICED BUT NO MOVEMENT'
-          where AE.analytic_account_id =0 and AE.DEPT = 'MANUFACTURING/PRODUCT LINE'
- -- 		 select * from M_ACC_MO_WIP where from_date = to_date('03-01-2026','MM-DD-YYYY') AND REMARKS !='INVOICED BUT NO MOVEMENT'
-     ), mfg_sbu as(
-     select 
-     m.accrual_id,
-     m.sbu,
-     sum(mo_allocation) total,
-     trunc(sum(mo_allocation),2) trunc_total,
-         (sum(mo_allocation)/total_accrual_debit)*100 total_pct,
-     trunc((sum(mo_allocation)/total_accrual_debit)*100,2) trunc_total_pct,
-     m.debit_final,
-          m.FROM_DATE,
-          m.TO_DATE,
-          m.debit_to,
-         m.wip_account,
-         m.journal_id,
-         m.distribution_percentage,
-         m.total_accrual_debit
-     from mfg m
-          group by m.accrual_id,
-     m.sbu,m.debit_final,
-          m.FROM_DATE,
-          m.TO_DATE,
-             m.debit_to,
-         m.wip_account,
-         m.journal_id,
-         m.distribution_percentage,
-         m.total_accrual_debit
-     ), mfg_rank as(
+     acd.distribution_percentage ,
+     acd.m_acc_category_id,
+     acd.analytic_account_id,
+     COALESCE(adg.dept_group, ADG2.DEPT_GROUP) DEPT_GROUP,
+     COALESCE(ADG.ID,ADG2.ID) DEPT_GROUP_ID,
+     COALESCE(aaa.name,ADG2.DEPT_GROUP) dept 
+     ,aaa.code,
+     acd.debit_to,
+     acd.wip_account,
+     cp.journal_id
+     from
+     m_acc_cost_distribution acd
+      left JOIN account_analytic_account aaa ON aaa.id = acd.analytic_account_id
+      left join m_acc_department_groups adg on adg.id =aaa.m_acc_group_id
+       LEFT JOIN categ_percentage CP ON CP.ACT_ID = ACD.m_acc_category_id 
+       LEFT JOIN M_ACC_DEPARTMENT_GROUPS ADG2 ON ADG2.ID = ACD.GROUP_ID
+        WHERE CP.acc_categ_percentage = 100
+      --  and acd.m_acc_category_id =1
+      order by m_acc_category_id, dept_group
+         )
+  ,accrual_entry as(
+SELECT 
+      maa.id accrual_id,
+MAA.TOTAL_ACCRUAL_VALUE total_debit,
+ DP.distribution_percentage,
+ trunc(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100),2) allocation_trunc,
+ MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100) allocation,
+ sum(trunc(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100),2)) over (partition by MAA.ID) total_allocation_trunc,
+     sum(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100)) over (partition by MAA.ID) total_allocation,
+ DP.dept_group,
+  DP.dept_group_ID,
+ DP.dept,
+     DP.analytic_account_id,
+     maa.credit_to,
+     dp.debit_to,
+     dp.wip_account,
+     dp.journal_id,
+      MAA.FROM_DATE,
+      MAA.TO_DATE
+FROM
+      M_ACC_ACCRUAL MAA
+      JOIN detailed_percentage DP ON DP.m_acc_category_id =MAA.DIST_CATEG_ID
+      WHERE maa.month_id = $month_id AND $accrual_where MAA.IS_ACCRUAL
+      --MAA.FROM_DATE = TO_dATE('2026-03-20','YYYY-MM-DD')  AND maa.TO_DATE = TO_dATE('2026-03-31','YYYY-MM-DD')
+      )
+          , ranked as(
      select
-     ms.accrual_id,
-     ms.sbu,
-     ms.total sbu_total,
-     ms.trunc_total trunc_sbu_total,
-     sum(ms.total) over(partition by accrual_id) total,
-     sum(ms.trunc_total) over(partition by accrual_id) trunc_total,
-     ((ms.debit_final - (sum(ms.trunc_total) over(partition by accrual_id)))/ 0.01)::integer rows_to_adjust,
-     ROW_NUMBER() OVER (PARTITION BY ms.accrual_id ORDER BY ms.total - ms.trunc_total DESC) AS rn,
-     -- pct
-     ms.total_pct ,
-     ms.trunc_total_pct,
-     sum(ms.total_pct) over(partition by accrual_id) pct_total,
-     sum(ms.trunc_total_pct) over(partition by accrual_id) pct_trunc_total,
-     ((ms.distribution_percentage -(sum(ms.trunc_total_pct) over(partition by accrual_id)) )/ 0.01)::integer rows_to_adjust_pct,
-     ROW_NUMBER() OVER (PARTITION BY ms.accrual_id ORDER BY ms.total_pct - ms.trunc_total_pct DESC) AS rn_pct,
-     ms.debit_final,
-              ms.FROM_DATE,
-          ms.TO_DATE,
-             ms.debit_to,
-         ms.wip_account,
-         ms.journal_id
-     from 
-     mfg_sbu ms
- ),
- distributed_final as(
- select
- accrual_id,
- CASE 
-             WHEN rn_pct <= rows_to_adjust_pct THEN trunc_total_pct + 0.01
-             ELSE trunc_total_pct
-         END AS distribution_percentage,
- CASE 
-             WHEN rn <= rows_to_adjust THEN trunc_sbu_total + 0.01
-             ELSE trunc_sbu_total
-         END AS debit_final,
- adg.dept_group,
- adg.id dept_group_id,
- aaa.name dept,
- sbu.analytic_account_id,
-     mr.debit_to,
-         mr.wip_account,
-     mr.journal_id,
- mr.from_date,
- mr.to_date
- from 
- mfg_rank mr
- join m_acc_sbu_maint sbu on upper(sbu.sbu) = upper(mr.sbu)
- left JOIN account_analytic_account aaa ON aaa.id = sbu.analytic_account_id
-          left join m_acc_department_groups adg on adg.id =aaa.m_acc_group_id
- union all
- select 
- ae.accrual_id,
+ae.accrual_id,
+ ae.total_debit,
  ae.distribution_percentage,
- ae.debit_final,
+ ae.allocation - ae.allocation_trunc allocation_diff,
+ ae.allocation_trunc,
+ ((ae.total_allocation - ae.total_allocation_trunc)/0.01)::integer rows_to_adjust,
+ ROW_NUMBER() OVER (PARTITION BY ae.accrual_id ORDER BY ae.allocation - ae.allocation_trunc DESC) AS rn,
  ae.dept_group,
  ae.dept_group_ID,
  ae.dept,
- ae.analytic_account_id,
- ae.debit_to,
- ae.wip_account,
- ae.journal_id,
- ae.FROM_DATE,
- ae.TO_DATE
+         ae.analytic_account_id,
+             ae.debit_to,
+             ae.wip_account,
+             ae.journal_id,
+                  AE.FROM_DATE,
+      AE.TO_DATE
+ from accrual_entry ae)
+ , final_DEPT_DIST as (
+ select 
+ accrual_id,
+ distribution_percentage,
+  CASE 
+         WHEN rn <= rows_to_adjust THEN allocation_trunc + 0.01
+         ELSE allocation_trunc
+     END AS debit_final,
+ dept_group,
+ dept_group_ID,
+ dept,
+     analytic_account_id,
+     debit_to,
+     wip_account,
+     journal_id,
+          FROM_DATE,
+      TO_DATE,
+     total_debit total_accrual_debit
+ from 
+ ranked
+ ), mfg as (
+      select ae.accrual_id,adm.mo,AE.debit_final,ADM.EARNED_HRS/SUM(adm.EARNED_HRS) OVER(PARTITION BY AE.ACCRUAL_ID,ae.wip_account) percentage,
+      ae.debit_final * ADM.EARNED_HRS/SUM(adm.EARNED_HRS) OVER(PARTITION BY AE.ACCRUAL_ID,ae.wip_account) mo_allocation,
+      adm.sbu ,
+      ae.FROM_DATE,
+      ae.TO_DATE,
+     ae.debit_to,
+     ae.wip_account,
+     ae.distribution_percentage,
+     ae.total_accrual_debit,
+     ae.journal_id
+     from final_dept_dist AE
+     JOIN M_ACC_MO_WIP ADM ON ADM.FROM_DATE = AE.FROM_DATE  AND ADM.TO_DATE = AE.TO_DATE AND ADM.REMARKS !='INVOICED BUT NO MOVEMENT'
+     where  ae.wip_account !=0 and ae.wip_account is not null --and AE.DEPT = 'MANUFACTURING/PRODUCT LINE'
+-- 		 select * from M_ACC_MO_WIP where from_date = to_date('03-01-2026','MM-DD-YYYY') AND REMARKS !='INVOICED BUT NO MOVEMENT'
+ ), mfg_sbu as(
+ select 
+ m.accrual_id,
+ m.sbu,
+ sum(mo_allocation) total,
+ trunc(sum(mo_allocation),2) trunc_total,
+     (sum(mo_allocation)/total_accrual_debit)*100 total_pct,
+ trunc((sum(mo_allocation)/total_accrual_debit)*100,2) trunc_total_pct,
+ m.debit_final,
+      m.FROM_DATE,
+      m.TO_DATE,
+      m.debit_to,
+     m.wip_account,
+     m.journal_id,
+     m.distribution_percentage,
+     m.total_accrual_debit
+ from mfg m
+      group by m.accrual_id,
+ m.sbu,m.debit_final,
+      m.FROM_DATE,
+      m.TO_DATE,
+         m.debit_to,
+     m.wip_account,
+     m.journal_id,
+     m.distribution_percentage,
+     m.total_accrual_debit
+ ), mfg_rank as(
+ select
+ ms.accrual_id,
+ ms.sbu,
+ ms.total sbu_total,
+ ms.trunc_total trunc_sbu_total,
+ sum(ms.total) over(partition by accrual_id,ms.wip_account) total,
+ sum(ms.trunc_total) over(partition by accrual_id, ms.wip_account) trunc_total,
+ ((ms.debit_final - (sum(ms.trunc_total) over(partition by accrual_id, ms.wip_account)))/ 0.01)::integer rows_to_adjust,
+ ROW_NUMBER() OVER (PARTITION BY ms.accrual_id, ms.wip_account ORDER BY ms.total - ms.trunc_total DESC) AS rn,
+ -- pct
+ ms.total_pct ,
+ ms.trunc_total_pct,
+ sum(ms.total_pct) over(partition by accrual_id, ms.wip_account) pct_total,
+ sum(ms.trunc_total_pct) over(partition by accrual_id, ms.wip_account) pct_trunc_total,
+ ((ms.distribution_percentage -(sum(ms.trunc_total_pct) over(partition by accrual_id,ms.wip_account)) )/ 0.01)::integer rows_to_adjust_pct,
+ ROW_NUMBER() OVER (PARTITION BY ms.accrual_id, ms.wip_account ORDER BY ms.total_pct - ms.trunc_total_pct DESC) AS rn_pct,
+ ms.debit_final,
+          ms.FROM_DATE,
+      ms.TO_DATE,
+         ms.debit_to,
+     ms.wip_account,
+     ms.journal_id
+ from 
+ mfg_sbu ms
+),
+distributed_final as(
+select
+accrual_id,
+CASE 
+         WHEN rn_pct <= rows_to_adjust_pct THEN trunc_total_pct + 0.01
+         ELSE trunc_total_pct
+     END AS distribution_percentage,
+CASE 
+         WHEN rn <= rows_to_adjust THEN trunc_sbu_total + 0.01
+         ELSE trunc_sbu_total
+     END AS debit_final,
+adg.dept_group,
+adg.id dept_group_id,
+aaa.name dept,
+sbu.analytic_account_id,
+ mr.debit_to,
+     mr.wip_account,
+ mr.journal_id,
+mr.from_date,
+mr.to_date
+from 
+mfg_rank mr
+join m_acc_sbu_maint sbu on upper(sbu.sbu) = upper(mr.sbu)
+left JOIN account_analytic_account aaa ON aaa.id = sbu.analytic_account_id
+      left join m_acc_department_groups adg on adg.id =aaa.m_acc_group_id
+union all
+select 
+ae.accrual_id,
+ae.distribution_percentage,
+ae.debit_final,
+ae.dept_group,
+ae.dept_group_ID,
+ae.dept,
+ae.analytic_account_id,
+ae.debit_to,
+ae.wip_account,
+ae.journal_id,
+ae.FROM_DATE,
+ae.TO_DATE
+from
+final_DEPT_DIST ae 
+where
+AE.wip_account =0
+order by accrual_id, dept_group)
+, debit_credit_DIST as(
+ select
+ df.accrual_id,
+ df.distribution_percentage,
+ df.debit_final debit,
+ 0::numeric credit,
+ df.dept_group,
+     df.dept,
+     df.analytic_account_id,
+      df.debit_to ACCOUNT_ID,
+     df.wip_account,
+     df.journal_id
  from
- final_DEPT_DIST ae 
- where
- AE.analytic_account_id !=0
- order by accrual_id, dept_group)
- , debit_credit_DIST as(
-     select
-     df.accrual_id,
-     df.distribution_percentage,
-     df.debit_final debit,
-     0::numeric credit,
-     df.dept_group,
-         df.dept,
-         df.analytic_account_id,
-          df.debit_to ACCOUNT_ID,
-         df.wip_account,
-         df.journal_id
-     from
-     distributed_final df
-     union all
-     select
-     je.id accrual_id,
-     0::numeric distribution_percentage,
-     0::numeric debit,
-     je.total_accrual_value credit,
-     '' dept_group,
-    '' dept,
-         null::integer analytic_account_id,
-          JE.credit_to account_id,
-          null::integer wip_account,
-          mact.journal_id
-     from
-     m_acc_accrual je
-     join m_acc_category_tbl mact on mact.id = je.dist_categ_id
-     WHERE JE.month_id = $month_id AND JE.IS_ACCRUAL
-     )
-     select 
-     je.id accrual_id,
-     --je.journal_entry,
-     --je.ref reference,
-     aj.name journal,
-      dcem.journal_id,
-     -- je.account_code,
-     -- je.account_id,
-     AA.CODE ACCOUNT_CODE,
-     DCEM.account_id,
- -- 	je.item_label,
- '$last_date_of_month' DATE,
-     dcem.dept,
-     dcem.distribution_percentage,
-     dcem.debit,
-     dcem.credit,
-     dcem.analytic_account_id,
-     split_part(dcem.dept,' ', 1) AA_CODE,
-     case when split_part(dcem.dept,' ', 1) = '8120' then 'DIE SALES' 
-                 when split_part(dcem.dept,' ', 1) = '8300' then 'TOs' 
-                 when split_part(dcem.dept,' ', 1) = '8310' then 'SOT' 
-                 when split_part(dcem.dept,' ', 1) = '8100' then 'HERMETICS'
-                 when split_part(dcem.dept,' ', 1) = '8110' then 'MODULES'
-             end sbu,
-     REPLACE(dcem.dept, '''', '''''') ANALYTIC_ACCOUNT,
-     DCEM.DEPT_GROUP,
-     dcem.wip_account wip_account_id
-     from
-     debit_credit_DIST dcem
-     join m_acC_accrual je on je.id = dcem.accrual_id AND JE.IS_ACCRUAL
-     LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
-     left join account_journal aj on aj.id = dcem.journal_id
-     ORDER BY accrual_id";
+ distributed_final df
+ union all
+ select
+ je.id accrual_id,
+ 0::numeric distribution_percentage,
+ 0::numeric debit,
+ je.total_accrual_value credit,
+ '' dept_group,
+'' dept,
+     null::integer analytic_account_id,
+      JE.credit_to account_id,
+      null::integer wip_account,
+      mact.journal_id
+ from
+ m_acc_accrual je
+ join m_acc_category_tbl mact on mact.id = je.dist_categ_id
+ WHERE JE.month_id = $month_id AND $accrual_where JE.IS_ACCRUAL
+ )
+ select 
+ je.id accrual_id,
+ --je.journal_entry,
+ --je.ref reference,
+ aj.name journal,
+  dcem.journal_id,
+ -- je.account_code,
+ -- je.account_id,
+ AA.CODE ACCOUNT_CODE,
+ DCEM.account_id,
+-- 	je.item_label,
+'$to_date_slash' DATE,
+ dcem.dept,
+ dcem.distribution_percentage,
+ dcem.debit,
+ dcem.credit,
+ dcem.analytic_account_id,
+ split_part(dcem.dept,' ', 1) AA_CODE,
+ case when split_part(dcem.dept,' ', 1) = '8120' then 'DIE SALES' 
+             when split_part(dcem.dept,' ', 1) = '8300' then 'TOs' 
+             when split_part(dcem.dept,' ', 1) = '8310' then 'SOT' 
+             when split_part(dcem.dept,' ', 1) = '8100' then 'HERMETICS'
+             when split_part(dcem.dept,' ', 1) = '8110' then 'MODULES'
+         end sbu,
+ REPLACE(dcem.dept, '''', '''''') ANALYTIC_ACCOUNT,
+ DCEM.DEPT_GROUP,
+ dcem.wip_account wip_account_id
+ from
+ debit_credit_DIST dcem
+ join m_acC_accrual je on je.id = dcem.accrual_id AND $accrual_where JE.IS_ACCRUAL
+ LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
+ left join account_journal aj on aj.id = dcem.journal_id
+ ORDER BY accrual_id";
+
+    //     $q = "WITH categ_percentage as (
+    //         SELECT 
+    //      act.id act_id,
+    //          act.acc_category,
+    //          coalesce(sum(acd.distribution_percentage),0) acc_categ_percentage,
+    //      --ACD.distribution_percentage,
+    //          act.journal_id
+    //          FROM m_acc_category_tbl act
+    //          LEFT JOIN M_ACC_CATEGORY_ACCOUNTS ACA ON ACA.ACC_CATEGORY_ID = ACT.ID
+    //          left join m_acc_cost_distribution acd on acd.m_acc_category_id =ACA.ACC_CATEGORY_ID AND ACD.DEBIT_TO = ACA.ACCOUNT_ID
+    //          group by  act.id, act.acc_category			  
+    //      )
+    //         , detailed_percentage as (
+    //          select 
+    //          acd.distribution_percentage ,
+    //          acd.m_acc_category_id,
+    //          acd.analytic_account_id,
+    //          COALESCE(adg.dept_group, ADG2.DEPT_GROUP) DEPT_GROUP,
+    //          COALESCE(ADG.ID,ADG2.ID) DEPT_GROUP_ID,
+    //          COALESCE(aaa.name,ADG2.DEPT_GROUP) dept 
+    //          ,aaa.code,
+    //          acd.debit_to,
+    //          acd.wip_account,
+    //          cp.journal_id
+    //          from
+    //          m_acc_cost_distribution acd
+    //           left JOIN account_analytic_account aaa ON aaa.id = acd.analytic_account_id
+    //           left join m_acc_department_groups adg on adg.id =aaa.m_acc_group_id
+    //            LEFT JOIN categ_percentage CP ON CP.ACT_ID = ACD.m_acc_category_id 
+    //            LEFT JOIN M_ACC_DEPARTMENT_GROUPS ADG2 ON ADG2.ID = ACD.GROUP_ID
+    //             WHERE CP.acc_categ_percentage = 100
+    //           --  and acd.m_acc_category_id =1
+    //           order by m_acc_category_id, dept_group
+    //              )
+    //       ,accrual_entry as(
+    //  SELECT 
+    //           maa.id accrual_id,
+    //  MAA.TOTAL_ACCRUAL_VALUE total_debit,
+    //      DP.distribution_percentage,
+    //      trunc(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100),2) allocation_trunc,
+    //      MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100) allocation,
+    //      sum(trunc(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100),2)) over (partition by MAA.ID) total_allocation_trunc,
+    //          sum(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100)) over (partition by MAA.ID) total_allocation,
+    //      DP.dept_group,
+    //       DP.dept_group_ID,
+    //      DP.dept,
+    //          DP.analytic_account_id,
+    //          maa.credit_to,
+    //          dp.debit_to,
+    //          dp.wip_account,
+    //          dp.journal_id,
+    //           MAA.FROM_DATE,
+    //           MAA.TO_DATE
+    //  FROM
+    //           M_ACC_ACCRUAL MAA
+    //           JOIN detailed_percentage DP ON DP.m_acc_category_id =MAA.DIST_CATEG_ID
+    //           WHERE maa.month_id = $month_id AND $accrual_where MAA.IS_ACCRUAL
+    //           --MAA.FROM_DATE = TO_dATE('2026-03-20','YYYY-MM-DD')  AND maa.TO_DATE = TO_dATE('2026-03-31','YYYY-MM-DD')
+    //           )
+    //               , ranked as(
+    //          select
+    //  ae.accrual_id,
+    //      ae.total_debit,
+    //      ae.distribution_percentage,
+    //      ae.allocation - ae.allocation_trunc allocation_diff,
+    //      ae.allocation_trunc,
+    //      ((ae.total_allocation - ae.total_allocation_trunc)/0.01)::integer rows_to_adjust,
+    //      ROW_NUMBER() OVER (PARTITION BY ae.accrual_id ORDER BY ae.allocation - ae.allocation_trunc DESC) AS rn,
+    //      ae.dept_group,
+    //      ae.dept_group_ID,
+    //      ae.dept,
+    //              ae.analytic_account_id,
+    //                  ae.debit_to,
+    //                  ae.wip_account,
+    //                  ae.journal_id,
+    //                       AE.FROM_DATE,
+    //           AE.TO_DATE
+    //      from accrual_entry ae)
+    //      , final_DEPT_DIST as (
+    //      select 
+    //      accrual_id,
+    //      distribution_percentage,
+    //       CASE 
+    //              WHEN rn <= rows_to_adjust THEN allocation_trunc + 0.01
+    //              ELSE allocation_trunc
+    //          END AS debit_final,
+    //      dept_group,
+    //      dept_group_ID,
+    //      dept,
+    //          analytic_account_id,
+    //          debit_to,
+    //          wip_account,
+    //          journal_id,
+    //               FROM_DATE,
+    //           TO_DATE,
+    //          total_debit total_accrual_debit
+    //      from 
+    //      ranked
+    //      ), mfg as (
+    //           select ae.accrual_id,adm.mo,AE.debit_final,ADM.EARNED_HRS/SUM(adm.EARNED_HRS) OVER(PARTITION BY AE.ACCRUAL_ID) percentage,
+    //           ae.debit_final * ADM.EARNED_HRS/SUM(adm.EARNED_HRS) OVER(PARTITION BY AE.ACCRUAL_ID) mo_allocation,
+    //           adm.sbu ,
+    //           ae.FROM_DATE,
+    //           ae.TO_DATE,
+    //          ae.debit_to,
+    //          ae.wip_account,
+    //          ae.distribution_percentage,
+    //          ae.total_accrual_debit,
+    //          ae.journal_id
+    //          from final_dept_dist AE
+    //          JOIN M_ACC_MO_WIP ADM ON ADM.FROM_DATE = AE.FROM_DATE  AND ADM.TO_DATE = AE.TO_DATE AND ADM.REMARKS !='INVOICED BUT NO MOVEMENT'
+    //          where AE.analytic_account_id =0 and AE.DEPT = 'MANUFACTURING/PRODUCT LINE'
+    //  -- 		 select * from M_ACC_MO_WIP where from_date = to_date('03-01-2026','MM-DD-YYYY') AND REMARKS !='INVOICED BUT NO MOVEMENT'
+    //      ), mfg_sbu as(
+    //      select 
+    //      m.accrual_id,
+    //      m.sbu,
+    //      sum(mo_allocation) total,
+    //      trunc(sum(mo_allocation),2) trunc_total,
+    //          (sum(mo_allocation)/total_accrual_debit)*100 total_pct,
+    //      trunc((sum(mo_allocation)/total_accrual_debit)*100,2) trunc_total_pct,
+    //      m.debit_final,
+    //           m.FROM_DATE,
+    //           m.TO_DATE,
+    //           m.debit_to,
+    //          m.wip_account,
+    //          m.journal_id,
+    //          m.distribution_percentage,
+    //          m.total_accrual_debit
+    //      from mfg m
+    //           group by m.accrual_id,
+    //      m.sbu,m.debit_final,
+    //           m.FROM_DATE,
+    //           m.TO_DATE,
+    //              m.debit_to,
+    //          m.wip_account,
+    //          m.journal_id,
+    //          m.distribution_percentage,
+    //          m.total_accrual_debit
+    //      ), mfg_rank as(
+    //      select
+    //      ms.accrual_id,
+    //      ms.sbu,
+    //      ms.total sbu_total,
+    //      ms.trunc_total trunc_sbu_total,
+    //      sum(ms.total) over(partition by accrual_id) total,
+    //      sum(ms.trunc_total) over(partition by accrual_id) trunc_total,
+    //      ((ms.debit_final - (sum(ms.trunc_total) over(partition by accrual_id)))/ 0.01)::integer rows_to_adjust,
+    //      ROW_NUMBER() OVER (PARTITION BY ms.accrual_id ORDER BY ms.total - ms.trunc_total DESC) AS rn,
+    //      -- pct
+    //      ms.total_pct ,
+    //      ms.trunc_total_pct,
+    //      sum(ms.total_pct) over(partition by accrual_id) pct_total,
+    //      sum(ms.trunc_total_pct) over(partition by accrual_id) pct_trunc_total,
+    //      ((ms.distribution_percentage -(sum(ms.trunc_total_pct) over(partition by accrual_id)) )/ 0.01)::integer rows_to_adjust_pct,
+    //      ROW_NUMBER() OVER (PARTITION BY ms.accrual_id ORDER BY ms.total_pct - ms.trunc_total_pct DESC) AS rn_pct,
+    //      ms.debit_final,
+    //               ms.FROM_DATE,
+    //           ms.TO_DATE,
+    //              ms.debit_to,
+    //          ms.wip_account,
+    //          ms.journal_id
+    //      from 
+    //      mfg_sbu ms
+    //  ),
+    //  distributed_final as(
+    //  select
+    //  accrual_id,
+    //  CASE 
+    //              WHEN rn_pct <= rows_to_adjust_pct THEN trunc_total_pct + 0.01
+    //              ELSE trunc_total_pct
+    //          END AS distribution_percentage,
+    //  CASE 
+    //              WHEN rn <= rows_to_adjust THEN trunc_sbu_total + 0.01
+    //              ELSE trunc_sbu_total
+    //          END AS debit_final,
+    //  adg.dept_group,
+    //  adg.id dept_group_id,
+    //  aaa.name dept,
+    //  sbu.analytic_account_id,
+    //      mr.debit_to,
+    //          mr.wip_account,
+    //      mr.journal_id,
+    //  mr.from_date,
+    //  mr.to_date
+    //  from 
+    //  mfg_rank mr
+    //  join m_acc_sbu_maint sbu on upper(sbu.sbu) = upper(mr.sbu)
+    //  left JOIN account_analytic_account aaa ON aaa.id = sbu.analytic_account_id
+    //           left join m_acc_department_groups adg on adg.id =aaa.m_acc_group_id
+    //  union all
+    //  select 
+    //  ae.accrual_id,
+    //  ae.distribution_percentage,
+    //  ae.debit_final,
+    //  ae.dept_group,
+    //  ae.dept_group_ID,
+    //  ae.dept,
+    //  ae.analytic_account_id,
+    //  ae.debit_to,
+    //  ae.wip_account,
+    //  ae.journal_id,
+    //  ae.FROM_DATE,
+    //  ae.TO_DATE
+    //  from
+    //  final_DEPT_DIST ae 
+    //  where
+    //  AE.analytic_account_id !=0
+    //  order by accrual_id, dept_group)
+    //  , debit_credit_DIST as(
+    //      select
+    //      df.accrual_id,
+    //      df.distribution_percentage,
+    //      df.debit_final debit,
+    //      0::numeric credit,
+    //      df.dept_group,
+    //          df.dept,
+    //          df.analytic_account_id,
+    //           df.debit_to ACCOUNT_ID,
+    //          df.wip_account,
+    //          df.journal_id
+    //      from
+    //      distributed_final df
+    //      union all
+    //      select
+    //      je.id accrual_id,
+    //      0::numeric distribution_percentage,
+    //      0::numeric debit,
+    //      je.total_accrual_value credit,
+    //      '' dept_group,
+    //     '' dept,
+    //          null::integer analytic_account_id,
+    //           JE.credit_to account_id,
+    //           null::integer wip_account,
+    //           mact.journal_id
+    //      from
+    //      m_acc_accrual je
+    //      join m_acc_category_tbl mact on mact.id = je.dist_categ_id
+    //      WHERE JE.month_id = $month_id AND $accrual_where JE.IS_ACCRUAL
+    //      )
+    //      select 
+    //      je.id accrual_id,
+    //      --je.journal_entry,
+    //      --je.ref reference,
+    //      aj.name journal,
+    //       dcem.journal_id,
+    //      -- je.account_code,
+    //      -- je.account_id,
+    //      AA.CODE ACCOUNT_CODE,
+    //      DCEM.account_id,
+    //  -- 	je.item_label,
+    //  '$to_date_slash' DATE,
+    //      dcem.dept,
+    //      dcem.distribution_percentage,
+    //      dcem.debit,
+    //      dcem.credit,
+    //      dcem.analytic_account_id,
+    //      split_part(dcem.dept,' ', 1) AA_CODE,
+    //      case when split_part(dcem.dept,' ', 1) = '8120' then 'DIE SALES' 
+    //                  when split_part(dcem.dept,' ', 1) = '8300' then 'TOs' 
+    //                  when split_part(dcem.dept,' ', 1) = '8310' then 'SOT' 
+    //                  when split_part(dcem.dept,' ', 1) = '8100' then 'HERMETICS'
+    //                  when split_part(dcem.dept,' ', 1) = '8110' then 'MODULES'
+    //              end sbu,
+    //      REPLACE(dcem.dept, '''', '''''') ANALYTIC_ACCOUNT,
+    //      DCEM.DEPT_GROUP,
+    //      dcem.wip_account wip_account_id
+    //      from
+    //      debit_credit_DIST dcem
+    //      join m_acC_accrual je on je.id = dcem.accrual_id AND $accrual_where JE.IS_ACCRUAL
+    //      LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
+    //      left join account_journal aj on aj.id = dcem.journal_id
+    //      ORDER BY accrual_id";
     // echo $q;
     // exit;
     $result = $db->fetchAll($q);
@@ -593,9 +926,11 @@ if ($selectDateRange) {
 
 if ($result) {
     // echo 'meron';
-
-    $db->query("UPDATE M_ACC_MONTH SET is_dept_distributed = TRUE WHERE ID = $month_id");
-
+    if ($is_accrual == 'true') {
+        $db->query("UPDATE M_ACC_MONTH SET is_dept_distributed = TRUE WHERE ID = $month_id");
+    } else {
+        $db->query("UPDATE M_ACC_MONTH SET is_ap_distributed = TRUE WHERE ID = $month_id");
+    }
     $old_accrual_id = '';
     try {
         // START TRANSACTION
@@ -625,13 +960,21 @@ if ($result) {
 
                 if ($old_accrual_id != 0) {
                     // UPDATE old accrual
-                    $db_ken->query(
-                        "UPDATE M_ACC_ACCRUAL SET JOURNAL_ID=$1, JOURNAL_NAME=$2, DATE=$3 WHERE ID=$4",
-                        [$journal_id, $journal, $date, $accrual_id]
-                    );
+                    if ($is_accrual == 'true') {
+                        $db_ken->query(
+                            "UPDATE M_ACC_ACCRUAL SET JOURNAL_ID=$1, JOURNAL_NAME=$2, DATE=$3 WHERE ID=$4",
+                            [$journal_id, $journal, $date, $accrual_id]
+                        );
+                    } else {
+                        $db_ken->query(
+                            "UPDATE M_ACC_ACCRUAL SET DATE=$1 WHERE ID=$2",
+                            [$date, $accrual_id]
+                        );
+                    }
+
 
                     // INSERT TO WIP
-                    $qToWip = insertToWip($old_accrual_id, $month_id);
+                    $qToWip = insertToWip($old_accrual_id, $month_id, $accrual_where);
                     $resultToWip = $db_ken->fetchAll($qToWip);
 
                     foreach ($resultToWip as $itemToWip) {
@@ -654,10 +997,17 @@ if ($result) {
                     }
                 } else {
                     // first time update
-                    $db_ken->query(
-                        "UPDATE M_ACC_ACCRUAL SET JOURNAL_ID=$1, JOURNAL_NAME=$2, DATE=$3 WHERE ID=$4",
-                        [$journal_id, $journal, $date, $accrual_id]
-                    );
+                    if ($is_accrual == 'true') {
+                        $db_ken->query(
+                            "UPDATE M_ACC_ACCRUAL SET JOURNAL_ID=$1, JOURNAL_NAME=$2, DATE=$3 WHERE ID=$4",
+                            [$journal_id, $journal, $date, $accrual_id]
+                        );
+                    } else {
+                        $db_ken->query(
+                            "UPDATE M_ACC_ACCRUAL SET DATE=$1 WHERE ID=$2",
+                            [$date, $accrual_id]
+                        );
+                    }
                 }
             }
 
@@ -715,7 +1065,7 @@ if ($result) {
 
 
         // INSERT TO WIP
-        $qToWipLastRecord = insertToWip($accrual_id, $month_id);
+        $qToWipLastRecord = insertToWip($accrual_id, $month_id, $accrual_where);
         $resultLastToWip = $db_ken->fetchAll($qToWipLastRecord);
 
         foreach ($resultLastToWip as $itemToWip) {
@@ -839,334 +1189,9 @@ if ($result) {
     exit;
 }
 
-function insertToWip($previous_main_id, $month_id)
+function insertToWip($previous_main_id, $month_id, $accrual_where)
 {
-    /////// ------------------------------JOINED ITO
-    //     $qToWip = "
-    //with not_tally as(
-    //         select
-    //         maa.id accrual_id,
-    //     adm.mo,
-    //     adm.device,
-    //     adm.category,
-    //     adm.customer_name,
-    //     adm.earned_hrs,
-    //     aad.debit *
-    //     CASE WHEN MACT.mo_pct_ref = 'EH' THEN adm.EH_percentage
-    //     ELSE QTY_PERCENTAGE END allocation,
-    //     aad.sbu,
-    //         adm.is_invoiced,
-    //         aad.ACCOUNT_CODE,
-    //         aad.ACCOUNT_ID,
-    //       aad.ANALYTIC_ACCOUNT,
-    //         aad.ANALYTIC_ACCOUNT_ID,
-    //         aad.wip_account_id
-    //     from 
-    //     m_acc_date_range adr
-    //         join M_ACC_ACCRUAL maa on maa.date_range_id = adr.ID
-    //         join M_ACC_ACCRUAL_DIST aad on aad.accrual_id = maa.id
-    //     join account_analytic_account aaa on aaa.id =aad.analytic_account_id
-    //     join m_acc_depARTMENT_groups adg on adg.id = aaa.m_acc_group_id
-    //     join m_acc_dist_mo adm on adm.sbu =aad.sbu and adm.date_range_id = adr.id
-    //     JOIN ACCOUNT_ACCOUNT   AA ON AA.ID = aad.ACCOUNT_ID
-    // 	JOIN M_ACC_CATEGORY_ACCOUNTS ACA ON ACA.ACCOUNT_ID = AA.ID and aca.acc_category_id = maa.dist_categ_id
-    //     JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.acc_category_id
-    //     where adr.id = $month_id and 
-    //     maa.id in ($previous_main_id) and adg.dept_group ='MANUFACTURING/PRODUCT LINE'
-    //     )
-    //     ,MO_RANKED AS (
-    //     SELECT 
-    //     nt.accrual_id,
-    //     NT.MO,
-    //     NT.DEVICE,
-    //     NT.CATEGORY,
-    //     NT.ALLOCATION,
-    //     NT.CUSTOMER_NAME,
-    //     NT.earned_hrs,
-    //     TRUNC(NT.ALLOCATION,5) TRUNC_ALLOCATION,
-    //     SUM(NT.ALLOCATION) OVER(partition by nt.accrual_id) TOTAL_ALLOCATION,
-    //     SUM(TRUNC(NT.ALLOCATION,5)) OVER(partition by nt.accrual_id) TOTAL_TRUNC_ALLOCATION,
-    //     (
-    //     NT.ALLOCATION- TRUNC(NT.ALLOCATION,5)
-    //     ) ALLOCATION_DIFF,
-    //     ((
-    //     SUM(NT.ALLOCATION) OVER(partition by nt.accrual_id)- SUM(TRUNC(NT.ALLOCATION,5)) OVER(partition by nt.accrual_id)
-    //     )/ 0.00001)::INTEGER ROWS_TO_ADJUST,
-    //     ROW_NUMBER() OVER (partition by nt.accrual_id ORDER BY NT.ALLOCATION - TRUNC(NT.ALLOCATION,5) DESC) AS rn,
-    //     nt.sbu,
-    //     nt.is_invoiced,
-    //     nt.ACCOUNT_CODE,
-    //         nt.ACCOUNT_ID,
-    //         nt.ANALYTIC_ACCOUNT,
-    //         nt.ANALYTIC_ACCOUNT_ID,
-    //         nt.wip_account_id
-    //     FROM 
-    //     NOT_TALLY NT
-    //     )
-    //     , allocation_adjusted as (
-    //     SELECT 
-    //                         accrual_id,
-    //     MO,
-    //     DEVICE,
-    //     CATEGORY,
-    //     CUSTOMER_NAME,
-    //     EARNED_HRS,
-    //     CASE 
-    //     WHEN rn <= rows_to_adjust THEN TRUNC_ALLOCATION + 0.00001
-    //     ELSE TRUNC_ALLOCATION
-    //     END AS ALLOCATION,
-    //                         total_allocation,
-    //     sbu,
-    //     is_invoiced,
-    //                           ACCOUNT_CODE,
-    //         ACCOUNT_ID,
-    //         ANALYTIC_ACCOUNT,
-    //         ANALYTIC_ACCOUNT_ID,
-    //         WIP_aCCOUNT_ID
-    //     FROM
-    //     MO_RANKED
-    //                              )
-    //                             ,RAW_DATA AS (
-    //     select 
-    //     accrual_id,
-    //     string_Agg(DISTINCT mo,',') mos,
-    //     round(sum(allocation),2) allocation,
-    //     is_invoiced,
-    //     sbu,
-    //     ACCOUNT_CODE CREDIT_ACCOUNT_CODE,
-    //     ACCOUNT_ID CREDIT_ACCOUNT_ID,
-    //         ANALYTIC_ACCOUNT,
-    //         ANALYTIC_ACCOUNT_ID,
-    //         AADD.WIP_ACCOUNT_ID ACCOUNT_ID,
-    //         AA.CODE ACCOUNT_CODE
-    //     from
-    //     allocation_adjusted aadd
-    //     LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID = AADD.WIP_ACCOUNT_ID
-    //     where --not is_invoiced
-    //      is_invoiced
-    //     group by accrual_id,sbu,is_invoiced, total_allocation,
-    //         ANALYTIC_ACCOUNT,
-    //         ANALYTIC_ACCOUNT_ID,
-    //           ACCOUNT_CODE,
-    //         ACCOUNT_ID,
-    //         AADD.WIP_ACCOUNT_ID,
-    //         AA.CODE,
-    //         AADD.WIP_ACCOUNT_ID
-    //     order by accrual_id,sbu,is_invoiced
-    //     )
-    // 	, FINAL_DATA AS(
-    // 		--------
-    // 		SELECT
-    // 		A.ACCRUAL_ID,
-    // 		A.MOS,
-    // 		A.ALLOCATION,
-    // 		A.IS_INVOICED,
-    // 		A.SBU,
-    // 		A.CREDIT_ACCOUNT_CODE,
-    // 		A.CREDIT_ACCOUNT_ID,
-    // 		A.ANALYTIC_ACCOUNT,
-    //         A.ANALYTIC_ACCOUNT_ID,
-    // 		A.ACCOUNT_ID,
-    // 		A.ACCOUNT_CODE,
-    // 		a.allocation + coalesce(ROUND(SUM(B.ALLOCATION),2),0) new_allocation
-    // 		FROM
-    // 		RAW_DATA A
-    // 		left join (
-    // 	select  sum(coalesce(aml.actual_allocation,aml.reversed_allocation)) allocation, am.mo, am.sbu, am.mo_status from m_acc_dist_mo am
-    // 	left join m_acC_dist_mo_lines aml on aml.dist_mo_id = am.id
-    // 	WHERE date_range_id != 17 and not is_invoiced
-    // 	and coalesce(aml.actual_allocation,aml.reversed_allocation) is not null
-    // 	group by mo, sbu, mo_status
-    // ) b on  A.mos  LIKE  '%'||  b.mo || '%' AND UPPER(B.SBU) =UPPER(A.SBU)
-    // GROUP BY
-    // 		A.ACCRUAL_ID,
-    // 		A.MOS,
-    // 		A.ALLOCATION,
-    // 		A.IS_INVOICED,
-    // 		A.SBU,
-    // 		A.CREDIT_ACCOUNT_CODE,
-    // 		A.CREDIT_ACCOUNT_ID,
-    // 		A.ANALYTIC_ACCOUNT,
-    //         A.ANALYTIC_ACCOUNT_ID,
-    // 		A.ACCOUNT_ID,
-    // 		A.ACCOUNT_CODE
-    // 	)
-    //     SELECT 
-    //     FD.ACCOUNT_CODE,
-    //     FD.ACCOUNT_ID,
-    //     FD.CREDIT_ACCOUNT_ID,
-    // 		REPLACE(FD.ANALYTIC_ACCOUNT, '''', '''''') ANALYTIC_ACCOUNT,
-    //     FD.ANALYTIC_ACCOUNT_ID,
-    //     FD.MOS,
-    //     FD. new_ALLOCATION DEBIT,
-    //     0 CREDIT,
-    // 	FD.ALLOCATION RAW_DEBIT,
-    // 	0 RAW_CREDIT,
-    //     FD.SBU
-    //     FROM FINAL_DATA FD
-    //     UNION ALL
-    //     SELECT 
-    //     FD2.CREDIT_ACCOUNT_CODE ACCOUNT_CODE,
-    //     FD2.CREDIT_ACCOUNT_ID ACCOUNT_ID,
-    //     FD2.CREDIT_ACCOUNT_ID,
-    //     NULL ANALYTIC_ACCOUNT,
-    //     NULL ANALYTIC_ACCOUNT_ID,
-    //     NULL MOS,
-    //     0 DEBIT,
-    //     SUM(FD2.new_ALLOCATION) CREDIT,
-    // 	0 RAW_DEBIT,
-    // 	SUM(FD2.ALLOCATION) RAW_CREDIT,
-    //     '' SBU
-    //     FROM FINAL_DATA FD2
-    //     GROUP BY
-    //     FD2.CREDIT_ACCOUNT_CODE,
-    //     FD2.CREDIT_ACCOUNT_ID
-    // ";
 
-    // echo $qToWip;
-    // exit;
-    /////// ------------------------------ORIGINAL ITO
-    // $qToWip = "with not_tally as(
-    //     select
-    //     maa.id accrual_id,
-    // adm.mo,
-    // adm.device,
-    // adm.category,
-    // adm.customer_name,
-    // adm.earned_hrs,
-    // aad.debit *
-    // CASE WHEN MACT.mo_pct_ref = 'EH' THEN adm.EH_percentage
-    // ELSE QTY_PERCENTAGE END allocation,
-    // aad.sbu,
-    //     adm.is_invoiced,
-    //     aad.ACCOUNT_CODE,
-    //     aad.ACCOUNT_ID,
-    //   aad.ANALYTIC_ACCOUNT,
-    //     aad.ANALYTIC_ACCOUNT_ID,
-    //     aad.wip_account_id
-    // from 
-    // m_acc_date_range adr
-    //     join M_ACC_ACCRUAL maa on maa.date_range_id = adr.ID
-    //     join M_ACC_ACCRUAL_DIST aad on aad.accrual_id = maa.id
-    // join account_analytic_account aaa on aaa.id =aad.analytic_account_id
-    // join m_acc_depARTMENT_groups adg on adg.id = aaa.m_acc_group_id
-    // join m_acc_dist_mo adm on adm.sbu =aad.sbu and adm.date_range_id = adr.id
-    // JOIN ACCOUNT_ACCOUNT   AA ON AA.ID = aad.ACCOUNT_ID
-    // JOIN M_ACC_CATEGORY_ACCOUNTS ACA ON ACA.ACCOUNT_ID = AA.ID and aca.acc_category_id = maa.dist_categ_id
-    // JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.acc_category_id
-    // where adr.id = $month_id and 
-    // maa.id in ($previous_main_id) and adg.dept_group ='MANUFACTURING/PRODUCT LINE'
-    // )
-    // ,MO_RANKED AS (
-    // SELECT 
-    // nt.accrual_id,
-    // NT.MO,
-    // NT.DEVICE,
-    // NT.CATEGORY,
-    // NT.ALLOCATION,
-    // NT.CUSTOMER_NAME,
-    // NT.earned_hrs,
-    // TRUNC(NT.ALLOCATION,5) TRUNC_ALLOCATION,
-    // SUM(NT.ALLOCATION) OVER(partition by nt.accrual_id) TOTAL_ALLOCATION,
-    // SUM(TRUNC(NT.ALLOCATION,5)) OVER(partition by nt.accrual_id) TOTAL_TRUNC_ALLOCATION,
-    // (
-    // NT.ALLOCATION- TRUNC(NT.ALLOCATION,5)
-    // ) ALLOCATION_DIFF,
-    // ((
-    // SUM(NT.ALLOCATION) OVER(partition by nt.accrual_id)- SUM(TRUNC(NT.ALLOCATION,5)) OVER(partition by nt.accrual_id)
-    // )/ 0.00001)::INTEGER ROWS_TO_ADJUST,
-    // ROW_NUMBER() OVER (partition by nt.accrual_id ORDER BY NT.ALLOCATION - TRUNC(NT.ALLOCATION,5) DESC) AS rn,
-    // nt.sbu,
-    // nt.is_invoiced,
-    // nt.ACCOUNT_CODE,
-    //     nt.ACCOUNT_ID,
-    //     nt.ANALYTIC_ACCOUNT,
-    //     nt.ANALYTIC_ACCOUNT_ID,
-    //     nt.wip_account_id
-    // FROM 
-    // NOT_TALLY NT
-    // )
-    // , allocation_adjusted as (
-    // SELECT 
-    //                     accrual_id,
-    // MO,
-    // DEVICE,
-    // CATEGORY,
-    // CUSTOMER_NAME,
-    // EARNED_HRS,
-    // CASE 
-    // WHEN rn <= rows_to_adjust THEN TRUNC_ALLOCATION + 0.00001
-    // ELSE TRUNC_ALLOCATION
-    // END AS ALLOCATION,
-    //                     total_allocation,
-    // sbu,
-    // is_invoiced,
-    //                       ACCOUNT_CODE,
-    //     ACCOUNT_ID,
-    //     ANALYTIC_ACCOUNT,
-    //     ANALYTIC_ACCOUNT_ID,
-    //     WIP_aCCOUNT_ID
-    // FROM
-    // MO_RANKED
-    //                          )
-    //                          ,FINAL_DATA AS (
-    // select 
-    // accrual_id,
-    // string_Agg(DISTINCT mo,',') mos,
-    // round(sum(allocation),2) allocation,
-    // is_invoiced,
-    // sbu,
-    // ACCOUNT_CODE CREDIT_ACCOUNT_CODE,
-    // ACCOUNT_ID CREDIT_ACCOUNT_ID,
-    //     ANALYTIC_ACCOUNT,
-    //     ANALYTIC_ACCOUNT_ID,
-    //     AADD.WIP_ACCOUNT_ID ACCOUNT_ID,
-    //     AA.CODE ACCOUNT_CODE
-    // from
-    // allocation_adjusted aadd
-    // LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID = AADD.WIP_ACCOUNT_ID
-    // where --not is_invoiced
-    //  is_invoiced
-    // group by accrual_id,sbu,is_invoiced, total_allocation,
-    //     ANALYTIC_ACCOUNT,
-    //     ANALYTIC_ACCOUNT_ID,
-    //       ACCOUNT_CODE,
-    //     ACCOUNT_ID,
-    //     AADD.WIP_ACCOUNT_ID,
-    //     AA.CODE,
-    //     AADD.WIP_ACCOUNT_ID
-    // order by accrual_id,sbu,is_invoiced
-    // )
-    // SELECT 
-    // FD.ACCOUNT_CODE,
-    // FD.ACCOUNT_ID,
-    // FD.CREDIT_ACCOUNT_ID,
-    // REPLACE(FD.ANALYTIC_ACCOUNT, '''', '''''') ANALYTIC_ACCOUNT,
-    // FD.ANALYTIC_ACCOUNT_ID,
-    // FD.MOS,
-    // FD. ALLOCATION DEBIT,
-    // 0 CREDIT,
-    // FD.SBU
-    // FROM FINAL_DATA FD
-    // UNION ALL
-    // SELECT 
-    // FD2.CREDIT_ACCOUNT_CODE ACCOUNT_CODE,
-    // FD2.CREDIT_ACCOUNT_ID ACCOUNT_ID,
-    // FD2.CREDIT_ACCOUNT_ID,
-    // NULL ANALYTIC_ACCOUNT,
-    // NULL ANALYTIC_ACCOUNT_ID,
-    // NULL MOS,
-    // 0 DEBIT,
-    // SUM(FD2.ALLOCATION) CREDIT,
-    // '' SBU
-    // FROM FINAL_DATA FD2
-    // GROUP BY
-    // FD2.CREDIT_ACCOUNT_CODE,
-    // FD2.CREDIT_ACCOUNT_ID
-    // ";
-
-
-    /////// ------------------------------HINDI ITO JOINED
     $qToWip = "
     with not_tally as(
         select
@@ -1190,7 +1215,7 @@ function insertToWip($previous_main_id, $month_id)
         adm.mo_done_qty
     from 
     m_acc_month adr
-        join M_ACC_ACCRUAL maa on maa.month_id = adr.ID AND MAA.IS_ACCRUAL
+        join M_ACC_ACCRUAL maa on maa.month_id = adr.ID AND $accrual_where MAA.IS_ACCRUAL
         join M_ACC_ACCRUAL_DIST aad on aad.accrual_id = maa.id
     join account_analytic_account aaa on aaa.id =aad.analytic_account_id
     join m_acc_depARTMENT_groups adg on adg.id = aaa.m_acc_group_id
@@ -1293,7 +1318,7 @@ function insertToWip($previous_main_id, $month_id)
         AA.CODE,
         AADD.WIP_ACCOUNT_ID
  union all							 
- select  
+    select  
      	im.accrual_id accrual_id,
      	string_Agg(DISTINCT am.mo,',') mos,
          round(sum( (im.invoiced_qty/im.mo_done_qty) * coalesce(aml.actual_allocation,aml.accrual_allocation)),2) allocation, 
@@ -1308,7 +1333,7 @@ function insertToWip($previous_main_id, $month_id)
  		'From WIP of Previous Months' reference
      	from m_acc_mo_wip am
      	left join m_acc_mo_wip_line aml on aml.mo_wip_id = am.id
-     	join m_acc_accrual maa on maa.id = aml.accrual_id AND MAA.IS_ACCRUAL
+     	join m_acc_accrual maa on maa.id = aml.accrual_id -- AND $accrual_where MAA.IS_ACCRUAL
      	join M_ACC_ACCRUAL_DIST mad on mad.accrual_id = aml.accrual_id and upper(mad.sbu) = upper(am.sbu)
      	join M_ACC_CATEGORY_TBL mact on mact.id = maa.dist_categ_id
      	JOIN allocation_adjusted IM ON IM.MO =AM.MO AND IM.WIP_ACCOUNT_ID = MAD.wip_account_id
@@ -1317,7 +1342,7 @@ function insertToWip($previous_main_id, $month_id)
      	and coalesce(aml.actual_allocation,aml.accrual_allocation) is not null
      	group by im.accrual_id, am.sbu,IM.ACCOUNT_CODE,IM.ACCOUNT_ID,IM.ANALYTIC_ACCOUNT,IM.ANALYTIC_ACCOUNT_ID,IM.WIP_ACCOUNT_ID,aa.CODE
 		)
-		SELECT 
+	SELECT 
     FD.ACCOUNT_CODE,
     FD.ACCOUNT_ID,
     FD.CREDIT_ACCOUNT_ID,

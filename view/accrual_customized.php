@@ -157,7 +157,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 <th>Credit Account</th>
 
                 <th>Total Accrual Value</th>
-                <th>Dist Category</th>
+                <th>Dist Template</th>
                 <th>Debit Account</th>
                 <th>From Date</th>
                 <th>To Date</th>
@@ -444,6 +444,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 removeDisabledAttr($row, '.accountSelect'); // function in helpers.js
                 removeDisabledAttr($row, '.distribution-input'); // function in helpers.js
                 removeDisabledAttr($row, '.disttemplateSelect'); // function in helpers.js
+                removeDisabledAttr($row, '.fromDateInput');
+                removeDisabledAttr($row, '.toDateInput');
                 $btn.data('btn', 'save');
                 $icon.removeClass('fa-pencil').addClass('fa-save');
 
@@ -454,6 +456,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 new_credit_to_id = $row.find(".accountSelect").val()
                 new_acc_value = $row.find(".distribution-input").val()
                 new_template_id = $row.find(".disttemplateSelect").val()
+                let new_from_date = $row.find(".fromDateInput").val();
+                let new_to_date = $row.find(".toDateInput").val();
                 // console.log(new_template_id, new_acc_value, new_credit_to_id)
                 // return; 
                 swal({
@@ -479,6 +483,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                     new_credit_to_id: new_credit_to_id,
                                     new_acc_value: new_acc_value,
                                     new_template_id: new_template_id,
+                                    new_from_date: new_from_date,
+                                    new_to_date: new_to_date,
                                     accrual_id: id
                                 },
                                 success: function(data) {
@@ -674,21 +680,23 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             const newMonthSelected = $(this).val();
 
             // check if may laman DataTable
-            if (distTable.rows().count() > 0) {
-                alert("You can't change date when you have active accrual.");
+            // if (distTable.rows().count() > 0) {
+            //     alert("You can't change date when you have active accrual.");
 
-                // revert selection
-                $(this).val(currentMonthYearValue);
+            //     // revert selection
+            //     $(this).val(currentMonthYearValue);
 
-                return;
-            }
+            //     return;
+            // }
 
             // update current value
             // currentMonthYearValue = newValue;
 
             // proceed
+            // console.log(newMonthSelected)
             fetchAccrual(newMonthSelected);
         });
+
         // BUTTON NG ACCRUAL
         $('#btnInsertToOdoo').on('click', async function() {
             // fetchAccrual()
@@ -1559,6 +1567,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
 
         function fetchAccrual(newMonthSelected) {
+
             $.ajax({
                 url: "ajax/fetch/fetch_accrual.php",
                 method: "POST",
@@ -1566,10 +1575,11 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     year_month: newMonthSelected
                 },
                 dataType: "json",
+
                 success: function(data) {
                     $('#btnExcel').show();
                     // console.log(data);
-
+                    initDistTable();
 
                     active_acc = data['active_accrual']
                     date_range_val = data['date_range'];
@@ -1615,7 +1625,10 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                     if (active_acc) {
 
-                        $('#yearMonthSelect').prop('readonly', true);
+                        if (date_range_val['is_all_reversed'] != 't') {
+                            $('#yearMonthSelect').prop('readonly', true);
+                        }
+
                         active_acc.forEach(row => {
                             grouped[row.id] = row;
                         });
@@ -1740,11 +1753,25 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             return account_per_accrual;
                         }
                     },
+                    // {
+                    //     data: 'from_date'
+                    // },
+                    // {
+                    //     data: 'to_date'
+                    // },
                     {
-                        data: 'from_date'
+                        data: 'from_date',
+                        render: function(data, type, row) {
+                            let value = data ? data : '';
+                            return `<input type="date" class="form-control fromDateInput" value="${value}" disabled>`;
+                        }
                     },
                     {
-                        data: 'to_date'
+                        data: 'to_date',
+                        render: function(data, type, row) {
+                            let value = data ? data : '';
+                            return `<input type="date" class="form-control toDateInput" value="${value}" disabled>`;
+                        }
                     },
                     {
                         data: null,
@@ -1791,7 +1818,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 url: 'ajax/transaction/save_distributed_journal.php',
                 dataType: 'json',
                 data: {
-                    month_id: month_id
+                    month_id: month_id,
+                    is_accrual: true
                 },
 
                 success: function(response) {
@@ -2287,7 +2315,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 method: "POST",
                 dataType: "json",
                 data: {
-                    month_id: date_range_id
+                    month_id: date_range_id,
+                    is_accrual: true
                 },
                 success: function(data) {
 
