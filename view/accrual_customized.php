@@ -126,12 +126,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<!-- <label for="select">SELECT MONTH YEAR</label> -->
+
 <div class="distTable_wrapper">
-    <!-- 
-    <select id="yearMonthSelect" data-selected="<?= $selectedYM ?>" class="form-control" style="width:250px;">
-        <option class="custom-option" value=""></option>
-    </select> -->
+
     <input type="month" name="month_year" id="yearMonthSelect" class="form-control" style="width:250px; display:unset !important">
     <button class="btn btn-success" id="btnRunDist">Run Distribution</button>
     <button class="btn btn-primary" id="btnModalAccrual">Add Accrual</button>
@@ -142,14 +139,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         <button class="btn btn-danger" id="btnResetEntries">Reset Entries</button>
     <?php } ?>
 
-    <!-- <?php if ($_SESSION['ppc']['emp_no'] == '10929' || $_SESSION['ppc']['emp_no'] == '8228'  || $_SESSION['ppc']['emp_no'] == '10768' || $_SESSION['ppc']['emp_no'] == '10947') { ?>
-        <label for="auto-switch">AUTO INSERT TO ODOO</label>
-        <label class="switch">
 
-            <input name="auto-switch" id='auto_insert_switch' type="checkbox" class="toggle-notification">
-            <span class="slider"></span>
-        </label>
-    <?php } ?> -->
     <table id="distTable" class="table table-bordered table-striped" style="width:100%">
         <thead>
             <tr>
@@ -162,23 +152,11 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 <th>From Date</th>
                 <th>To Date</th>
                 <th>Action</th>
-                <!-- <th>Account Name</th>
-                <th>Dept Name</th>
-                <th>Dept Code</th>
-                <th>Item Label</th>
-                <th>Distribution</th>
-                <th>Debit</th>
-                <th>Credit</th> -->
+
             </tr>
         </thead>
         <tbody>
-            <!-- <tfoot id="totalSumDist">
-            <tr>
-                <td colspan="7" style="text-align:right; font-weight:bold; color: #000000;">Total:</td>
-                <td id="totalSumDebit" style="font-weight:bold; color: #000000;"></td>
-                <td id="totalSumCredit" style="font-weight:bold; color: #000000;"></td>
-            </tr>
-        </tfoot> -->
+
 
         </tbody>
     </table>
@@ -321,13 +299,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                 <th>Dist Category</th>
                                 <th>Debit Account</th>
                                 <th>Action</th>
-                                <!-- <th>Account Name</th>
-                <th>Dept Name</th>
-                <th>Dept Code</th>
-                <th>Item Label</th>
-                <th>Distribution</th>
-                <th>Debit</th>
-                <th>Credit</th> -->
+
                             </tr>
                         </thead>
                         <tbody>
@@ -542,7 +514,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
 
         $("#btnRunDist").on("click", function() {
-            let yearMonth = '02-17-2026';
+            // let yearMonth = '02-17-2026';
+            let yearMonth = $(this).data('yearmonth-id');
             let month_id = $(this).data('id');
 
             console.log('MONTH ID', month_id);
@@ -700,10 +673,12 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         // BUTTON NG ACCRUAL
         $('#btnInsertToOdoo').on('click', async function() {
             // fetchAccrual()
+            let yearMonth = $(this).data('yearmonth-id');
+            // let month_id = $(this).data('id');
             date_range_id = $(this).data('id');
             // console.log(date_range_id)
 
-            previewJournalEntries(date_range_id)
+            previewJournalEntries(date_range_id, yearMonth)
             $('#previewInsertToOdoo').modal('show');
             $('#previewInsertToOdoo #btnSubmitToOdoo').attr('data-id', date_range_id)
         }); // END
@@ -1625,9 +1600,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                     if (active_acc) {
 
-                        if (date_range_val['is_all_reversed'] != 't') {
-                            $('#yearMonthSelect').prop('readonly', true);
-                        }
+                        // if (date_range_val['is_all_reversed'] != 't') {
+                        //     $('#yearMonthSelect').prop('readonly', true);
+                        // }
 
                         active_acc.forEach(row => {
                             grouped[row.id] = row;
@@ -1835,8 +1810,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     //     },
 
                     //     success: function(mailRes) {
-                    init();
-                    previewJournalEntries(month_id)
+                    // init();
+                    previewJournalEntries(month_id, yearMonth)
                     $('#previewInsertToOdoo').modal('show');
                     $('#previewInsertToOdoo #btnSubmitToOdoo').attr('data-id', month_id)
 
@@ -2344,7 +2319,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             })
         }
 
-        function previewJournalEntries(date_range_id) {
+        function previewJournalEntries(date_range_id, yearMonth) {
             if (PreviewDistTable) {
                 PreviewDistTable.clear().draw();
                 PreviewDistTable.destroy();
@@ -2433,9 +2408,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             $.ajax({
                 url: "ajax/fetch/fetch_accrual.php",
                 method: "POST",
-                // data: {
-                //     year_month: yearMonth
-                // },
+                data: {
+                    year_month: yearMonth
+                },
                 dataType: "json",
                 success: function(data) {
                     $('#btnExcel').show();

@@ -396,7 +396,13 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 </style>
 
 <body>
-
+ <?php if ($_SESSION['ppc']['emp_no'] == "10947") { ?>
+<div class="container-btn" style="padding:20px;">
+    <button id="viewDistPercBtn" class="btn active">Distribution</button>
+    <button id="viewTemplateBtn" class="btn" style="margin-left:15px;">Distribution Template</button>
+</div>
+<hr/>
+<?php } ?>
 
     <div id="categoryContainer">
         <div class="instruct" style="margin-top: 15px; margin-bottom: 15px;">
@@ -553,6 +559,28 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
             let accounts_tagged_global = [];
             let all_accounts_global = [];
 
+            $('.accountSelect').select2({
+                placeholder: 'Select an account',
+                width: 'resolve',
+                allowClear: true,
+                width: '100%'
+            });
+
+
+            $('#accountCategSelect').select2({
+                placeholder: 'Select an account',
+                width: 'resolve',
+                allowClear: true,
+                width: '100%'
+            });
+
+            $('#deptSelect').select2({
+                placeholder: 'Select department',
+                width: 'resolve',
+                allowClear: true,
+                width: '100%'
+            });
+
             $.ajax({
                 type: 'post',
                 dataType: 'json',
@@ -567,6 +595,8 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     // spinner.stop(target);
                 } //SUCCESS
             }); //AJAX
+
+
             inputTextNumberAndPeriodOnly('.distribution-input');
             var dt = {};
             let currentCategoryId = null;
@@ -579,7 +609,29 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                     dataSrc: ''
                 },
                 columns: [{
-                        data: 'acc_category'
+                        data: 'acc_category',
+                        render: function(data, type, row) {
+
+                            let category = data || '';
+                            let original = row.original_category || '';
+                            let duplicatedBy = row.added_by || '';
+
+                            let html = '<div>';
+
+                            html += '<strong>' + category + '</strong>';
+
+                            if (original) {
+                                html += '<br>';
+                                html += '<span style="font-size:12px; color:#000000;">';
+                                html += 'Copy from: ' + '<span style="font-weight:bold;">' + original + '</span>' + ' - Copied by: ' + '<span style="font-weight:bold;">' + duplicatedBy + '</span>';
+                                // html += duplicatedBy;
+                                html += '</span>';
+                            }
+
+                            html += '</div>';
+
+                            return html;
+                        }
                     },
                     {
                         data: 'journal_acc',
@@ -603,6 +655,11 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                     data-id="${row.id}" 
                                     data-category="${row.acc_category}">
                                     <i class="fa fa-arrow-circle-right"></i>
+                                </button>
+                                <button class="duplicateBtn btn btn-primary" 
+                                    data-id="${row.id}" 
+                                    data-category="${row.acc_category}">
+                                    <i class="fa fa-copy"></i>
                                 </button>`;
                         }
                     }
@@ -646,8 +703,6 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                 $('#addCategoryContainer').addClass('hidden');
             });
 
-
-
             dt.taggedAccTbl = $('#accountTypeTable').DataTable({
                 pageLength: 5,
                 lengthChange: false,
@@ -672,30 +727,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                 $('#categoryContainer').show();
             });
 
-            $('#accountSelect').select2({
-                placeholder: 'Select an account',
-                width: 'resolve',
-                allowClear: false,
-                width: '100%'
-            });
 
-
-            $('#accountCategSelect').select2({
-                placeholder: 'Select an account',
-                width: 'resolve',
-                allowClear: false,
-                width: '100%'
-            });
-
-
-
-
-            $('#deptSelect').select2({
-                placeholder: 'Select department',
-                width: 'resolve',
-                allowClear: false,
-                width: '100%'
-            });
 
             $('#addAccountBtn').on('click', () => $('#accountActionContainer').toggleClass('hidden'));
             $('#saveAccountBtn').on('click', function() {
@@ -1249,7 +1281,9 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                     <button class="remove-distribution btn btn-sm btn-danger"><i class="fa fa-trash"></i></button>
                                     `
                                 ]).draw(false).node();
-
+                                $(node).find('.accountSelect').select2({
+                                    width: '100%'
+                                });
 
                                 $(node).attr('data-id', tagged_dept['analytic_account_id']);
                                 $(node).attr('data-group-id', tagged_dept['group_id']);
@@ -1259,8 +1293,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                 $(node).data('original-wip-account', tagged_dept['wip_account'] || 0);
 
                             }
-                            // setSelect2();
-
+                            setSelect2();
                             updateTotalDistribution();
                             toggleDistributionButton();
                         } else {
@@ -1548,6 +1581,9 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                         <button class="remove-distribution btn btn-sm btn-danger"><i class="fa fa-trash"></i></button>`
                                 ]).draw(false).node();
 
+                                // $(node).find('.accountSelect').select2({
+                                //     width: '100%'
+                                // });
                                 $(node).attr('data-group-id', tagged_dept['group_id']);
                                 $(node).attr('data-id', tagged_dept['analytic_account_id']);
                                 $(node).attr('data-dist-id', tagged_dept['dist_id']);
@@ -1555,6 +1591,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                                 $(node).data('original-debit-to', tagged_dept['debit_to'] || 0);
                                 $(node).data('original-wip-account', tagged_dept['wip_account'] || 0);
                             }
+                            setSelect2();
                             updateTotalDistribution();
                             toggleDistributionButton();
                         } else {
@@ -1793,7 +1830,8 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                             {
                                 data: null,
                                 render: function(data) {
-                                    return `<button class="viewBtn" data-id="${data.id}" data-category="${data.acc_category}">View</button>`;
+                                    return `<button class="viewBtn" data-id="${data.id}" data-category="${data.acc_category}">View</button>
+                                        `;
                                 }
                             }
                         ],
@@ -1860,6 +1898,52 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
             });
 
+            $('#categoryTable').on('click', '.duplicateBtn', function() {
+                let categoryId = $(this).data('id');
+                let categoryName = $(this).data('category');
+
+                swal({
+                    title: "Duplicate Template",
+                    text: "Enter new template name:",
+                    type: "input",
+                    showCancelButton: true,
+                    closeOnConfirm: false,
+                    animation: "slide-from-top",
+                    inputPlaceholder: "New template name"
+                }, function(inputValue) {
+
+                    if (inputValue === false) return;
+
+                    if (inputValue === "") {
+                        swal.showInputError("Template name cannot be empty!");
+                        return false;
+                    }
+
+                    $.ajax({
+                        url: 'ajax/transaction/duplicate_category.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            category_id: categoryId,
+                            new_category: inputValue
+                        },
+                        success: function(res) {
+                            if (res.status === 'success') {
+                                swal("Success", "Template duplicated successfully!", "success");
+
+                                $('#categoryTable').DataTable().ajax.reload();
+                            } else {
+                                swal("Error", res.message || "Something went wrong", "error");
+                            }
+                        },
+                        error: function() {
+                            swal("Error", "Server error occurred", "error");
+                        }
+                    });
+
+                });
+            });
+
             $('#backToAccounts').on('click', function() {
                 $('#accountHistoryContainer').addClass('hidden');
                 $('#accountTypeTableContainer').show();
@@ -1892,17 +1976,44 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
             //     });
             // });
 
-            // function setSelect2() {
-            //     $('.wipAccountSelect').select2({
-            //         width: '100%',
-            //         placeholder: 'Select account'
-            //     });
-            //     $('.accountSelect').select2({
-            //         width: '100%',
-            //         placeholder: 'Select account'
-            //     });
-            // }
+            function setSelect2() {
+                $('.wipAccountSelect').select2({
+                    width: '100%',
+                    placeholder: 'Select account'
+                });
+                $('.accountSelect').select2({
+                    width: '100%',
+                    placeholder: 'Select account'
+                });
+            }
 
         });
+
+    $('#viewDistPercBtn').on('click', function () {
+         $('#categoryContainer').show();
+        // $('#departmentSection').show();
+        // $('#departmentGroupSection').hide();
+        // $('#depGrouptTitle').hide();
+        // $('#deptTitle').show();
+
+        // $('#viewDeptBtn').addClass('active');
+        // $('#viewDeptGrpBtn').removeClass('active');
+
+        // deptTable.columns.adjust().draw(false);
+    });
+
+    $('#viewTemplateBtn').on('click', function () {
+        $('#categoryContainer').hide();
+        // $('#departmentSection').hide();
+        // $('#departmentGroupSection').show();
+        // $('#deptTitle').hide();
+        // $('#depGrouptTitle').show();
+
+        // $('#viewDeptGrpBtn').addClass('active');
+        // $('#viewDeptBtn').removeClass('active');
+
+        // deptGroupTable.columns.adjust().draw(false);
+    });
+
     </script>
 </body>

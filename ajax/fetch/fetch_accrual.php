@@ -39,15 +39,21 @@ if ($year_month != '') {
     and mam.active
     order by acc_active";
 } else {
-    $q = "select distinct  mam.*, maa.active acc_active
-,case when distributed_account_move_id is not null then 'True' else 'False' end as odoo_inserted
- 		  ,case when actual_apv_id is not null then 'True' else 'False' end as reversed
-		 ,case when reverse_account_move_id is not null then 'True' else 'False' end as rev_odoo_inserted
-from m_acc_month mam
+    //     $q = "select distinct  mam.*, maa.active acc_active
+    // ,case when distributed_account_move_id is not null then 'True' else 'False' end as odoo_inserted
+    //  		  ,case when actual_apv_id is not null then 'True' else 'False' end as reversed
+    // 		 ,case when reverse_account_move_id is not null then 'True' else 'False' end as rev_odoo_inserted
+    // from m_acc_month mam
+    // left join m_acc_accrual maa on maa.month_id = mam.id and maa.is_accrual
+    // where (not mam.is_dept_distributed or not mam.is_all_reversed)
+    // and mam.active
+    // order by acc_active, mam.year_month";
+    $q = "select distinct mam.*, coalesce(maa.month_id,null) month_id
+    ,case when distributed_account_move_id is not null then 'True' else 'False' end as odoo_inserted
+     from m_acc_month mam
 left join m_acc_accrual maa on maa.month_id = mam.id and maa.is_accrual
-where (not mam.is_dept_distributed or not mam.is_all_reversed)
-and mam.active
-order by acc_active";
+--where is_dept_distributed 
+order by  month_id nulls last,year_month desc";
 }
 
 
@@ -109,22 +115,27 @@ if (!$resulta && $year_month) {
 
 $queryReversal = "
 WITH acdr AS (
-    SELECT ADR.* FROM
-	M_ACC_MONTH ADR
-	JOIN
-	(
-		select 
-		MIN(to_date(year_month, 'YYYY-MM')) MIN_DATE
-		from
-		m_acc_month adr
-		left join (
-			select distinct month_id 
-			from m_acc_accrual 
-			where not is_reversed and is_accrual
-			) nr on nr.month_id = adr.id
-            where not adr.is_all_reversed
-	) A ON TO_CHAR(A.MIN_DATE,'YYYY-MM') = ADR.YEAR_MONTH
-    where not adr.is_all_reversed
+   -- SELECT ADR.* FROM
+	--M_ACC_MONTH ADR
+	--JOIN
+	--(
+	--	select 
+	--	MIN(to_date(year_month, 'YYYY-MM')) MIN_DATE
+	--	from
+	--	m_acc_month adr
+	--	left join (
+	--		select distinct month_id 
+	--		from m_acc_accrual 
+	--		where not is_reversed and is_accrual
+	--		) nr on nr.month_id = adr.id
+     --       where not adr.is_all_reversed
+	--) A ON TO_CHAR(A.MIN_DATE,'YYYY-MM') = ADR.YEAR_MONTH
+   -- where not adr.is_all_reversed
+
+   select distinct mam.*, coalesce(maa.month_id,null) month_id from m_acc_month mam
+   left join m_acc_accrual maa on maa.month_id = mam.id and maa.is_accrual
+   --where is_dept_distributed 
+   order by  month_id nulls last,year_month desc limit 1
 )
 SELECT
     ma.id,
@@ -140,7 +151,9 @@ SELECT
     string_agg(DISTINCT aa2.code || ' ' || aa2.name, ', ') AS debit_to,
 	am.name apv,
 	am.id apv_id,
-    ma.is_reversed
+    ma.is_reversed,
+	'false' from_previous,
+    acdr.year_month
 FROM m_acc_accrual ma
 JOIN account_account aa ON aa.id = ma.credit_to
 JOIN m_acc_category_tbl mct ON mct.id = ma.dist_categ_id
@@ -163,7 +176,53 @@ GROUP BY
 	am.name,
 	am.id,
     ma.month_id,
-    acdr.is_dept_distributed
+    acdr.is_dept_distributed,
+    acdr.year_month
+	union all
+	select
+	ma.id,
+    ma.from_date,
+    ma.to_date,
+    mam.is_dept_distributed,
+    aa.code || ' ' || aa.name AS credit_to,
+    aa.id AS credit_to_id,
+    ma.total_accrual_value,
+    mct.acc_category AS distribution_category,
+    mct.id AS category_id,
+    ma.month_id,
+    string_agg(DISTINCT aa2.code || ' ' || aa2.name, ', ') AS debit_to,
+	am.name apv,
+	am.id apv_id,
+    ma.is_reversed,
+	'true' from_previous,
+    mam.year_month
+	FROM m_acc_accrual ma
+JOIN account_account aa ON aa.id = ma.credit_to
+JOIN m_acc_category_tbl mct ON mct.id = ma.dist_categ_id
+JOIN acdr ON acdr.id != ma.month_id
+join m_acc_month mam on mam.id= ma.month_id
+LEFT JOIN M_ACC_COST_DISTRIBUTION acd ON acd.m_acc_category_id = ma.dist_categ_id
+LEFT JOIN account_account aa2 ON aa2.id = acd.debit_to
+left join account_move am on am.id = ma.actual_apv_id
+WHERE ma.active and ma.is_accrual
+and ma.distributed_account_move_id is not null
+and not ma.is_reversed
+GROUP BY
+    ma.id,
+    ma.from_date,
+    ma.to_date,
+    mct.id,
+    aa.id,
+    aa.code,
+    aa.name,
+    ma.total_accrual_value,
+    mct.acc_category,
+	am.name,
+	am.id,
+    ma.month_id,
+    mam.is_dept_distributed,
+    mam.year_month
+    
 ";
 $resReversal = $db->fetchAll($queryReversal);
 

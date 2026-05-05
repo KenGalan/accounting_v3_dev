@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $updateDateRange = "UPDATE M_ACC_DATE_RANGE SET IS_ALL_REVERSED = false, IS_DEPT_DISTRIBUTED = false";
         $db_ken->query($updateDateRange);
 
-        $updateMonth = "UPDATE M_ACC_MONTH SET IS_ALL_REVERSED = false, IS_DEPT_DISTRIBUTED = false";
+        $updateMonth = "UPDATE M_ACC_MONTH SET IS_ALL_REVERSED = false, IS_DEPT_DISTRIBUTED = false,  IS_AP_DISTRIBUTED = false";
         $db_ken->query($updateMonth);
 
         $db_ken->commit();

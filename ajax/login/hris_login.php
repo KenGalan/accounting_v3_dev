@@ -63,7 +63,7 @@ if (!empty($username) && !empty($password)) {
             $_SESSION['ppc']['admin'] = 1;
             $_SESSION['ppc']['access_type'] = 1;
 
-            header("Location: ../../journal_entries.php");
+            header("Location: ../../dashboard.php");
             exit;
         }
     } else if ($username == 'ginalyn' && $password == 'bartolome') {
@@ -80,7 +80,7 @@ if (!empty($username) && !empty($password)) {
         $_SESSION['ppc']['avatar'] = '';
         $_SESSION['ppc']['admin'] = 1;
         $_SESSION['ppc']['access_type'] = 1;
-        header("Location: ../../journal_entries.php");
+        header("Location: ../../dashboard.php");
         // // exit;
     } else {
         header("Location: ../../index.php?incorrect=1");

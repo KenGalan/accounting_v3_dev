@@ -35,7 +35,7 @@ JOIN account_move_line aml
     ON aml.move_id = am.id 
     AND aml.debit > 0
 JOIN m_acc_customized_dist_accounts acd 
-    ON acd.account_id = aml.account_id and acd.active
+    ON acd.reference = aml.ref and acd.active
 LEFT JOIN m_acc_cust_dist cd 
     ON cd.move_id = am.id
 LEFT JOIN setup 

@@ -39,7 +39,7 @@ foreach ($rows as $r) {
 
     if ($move_id === '' || $total_amount === '' || $accounting_date === '') {
         echo json_encode([
-            'status' => 'error',
+            'status' => 'error', 
             'message' => 'Missing row data.'
         ]);
         exit;

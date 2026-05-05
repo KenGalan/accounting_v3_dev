@@ -8,16 +8,14 @@ $conn = $db->getConnection();
 $sql = "
  SELECT 
         B.ID,
-        A.CODE || ' ' || A.NAME AS ACCOUNT,
+        B.REFERENCE,
         TO_CHAR(B.ADDED_ON,
         'YYYY-MM-DD'
         ) AS ADDED_ON,
         B.ADDED_BY,
         '' AS CHANGED_BY,
         '' AS CHANGED_ON
-    FROM ACCOUNT_ACCOUNT A
-    JOIN M_ACC_CUSTOMIZED_DIST_ACCOUNTS B 
-        ON A.ID = B.ACCOUNT_ID
+    FROM M_ACC_CUSTOMIZED_DIST_ACCOUNTS B 
     WHERE B.ACTIVE = TRUE
     ORDER BY B.ADDED_ON DESC
 ";
@@ -30,7 +28,7 @@ if ($result) {
     while ($row = pg_fetch_assoc($result)) {
         $data[] = [
             'id' => $row['id'],
-            'account' => $row['account'],
+            'reference' => $row['reference'],
             'date_added' => $row['added_on'],
             'added_by' => $row['added_by']
             // 'changed_by' => $row['changed_by'],

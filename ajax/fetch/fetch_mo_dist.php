@@ -3,6 +3,8 @@ $db = new Postgresql();
 
 $accrual_id = $_POST['accrual_id'];
 $date_range_id = $_POST['date_range_id'];
+
+$accrual_where = isset($_POST['is_accrual']) && $_POST['is_accrual'] == 'false' ? 'NOT' : '';
 // echo $date_range_id;
 // echo $journal_entries_id;
 // exit;
@@ -19,12 +21,12 @@ allocation,
 aad.sbu
 from 
 m_acc_month adr
-join M_ACC_ACCRUAL maa on maa.MONTH_ID = adr.ID AND MAA.IS_ACCRUAL
+join M_ACC_ACCRUAL maa on maa.MONTH_ID = adr.ID AND $accrual_where MAA.IS_ACCRUAL
 join (
 	select  a.accrual_id, a.analytic_account, a.analytic_account_id, sum(a.distribution_percentage) distribution_percentage,a.sbu, sum(a.debit) debit,sum(a.credit) credit,
 	MACT.mo_pct_ref
 	from M_ACC_ACCRUAL_DIST a
-	JOIN M_ACC_ACCRUAL a_main on a_main.id = a.accrual_id AND A_MAIN.IS_ACCRUAL
+	JOIN M_ACC_ACCRUAL a_main on a_main.id = a.accrual_id AND $accrual_where A_MAIN.IS_ACCRUAL
 	JOIN M_ACC_CATEGORY_ACCOUNTS   ACA ON ACA.ACCOUNT_ID = a.account_id and aca.Acc_category_id = a_main.dist_categ_id 
 	JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.Acc_category_id
 	WHERE A.ACCRUAL_ID = $accrual_id

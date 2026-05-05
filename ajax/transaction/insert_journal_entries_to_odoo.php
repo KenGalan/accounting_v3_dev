@@ -8,6 +8,8 @@ $month_id = $_POST['month_id'];
 $is_accrual = $_POST['is_accrual'];
 $message = '';
 $accrual_where = $is_accrual == 'true' ? '' : 'NOT';
+$am_type = $is_accrual == 'true' ? 'entry' : 'in_invoice';
+
 
 // Added by Ivan 03/23/26 -  Check if the month is already inserted to Odoo.
 $accrual_check = $db_ken->fetchRow("
@@ -101,7 +103,9 @@ if ($result) {
             $last_date_of_month = $row['last_date_of_month'];
             $aml_label = $row['item_label'];
             $journal_id = $row['journal_id'];
-            $amount_total = $row['credit'];
+            $amount_total =  $row['credit'];
+            // echo $amount_total;
+            // exit;
             // $journal_name = $row['journal'];
             $aa_root_id = $row['root_id'];
             $debit = $row['debit'];
@@ -124,6 +128,9 @@ if ($result) {
                 $ref = '/sample cogs';
                 $journal_name = 'Miscellaneous Operations';
                 $journal_id = 3;
+                if ($am_type == 'in_invoice') {
+                    $am_type = 'entry';
+                }
             } else {
                 $ref = '/sample';
                 $journal_name = $row['journal'];
@@ -134,24 +141,27 @@ if ($result) {
             // echo $balance;
             $account_move_checker_new = $row['accrual_id'] . $is_wip;
             if ($account_move_checker != $account_move_checker_new) {
-
+                // if ($is_accrual)
+                //     $condition_not_accrual = $is_accrual != 'true' && $debit > 0 ? true : false;
+                $untaxed = $is_accrual != 'true' ? $amount_total : 0.000;
+                $untaxed_signed = $is_accrual != 'true' ? $amount_total * -1 : 0.000;
                 $am_entries = [
                     'NAME' =>    '/',
                     'DATE'    => $last_date_of_month,
                     'REF' =>    $ref,
                     'STATE' =>    'draft',
-                    'TYPE'    => 'entry',
+                    'TYPE'    => $am_type,
                     'TO_CHECK' =>    'false', //boolean
                     'JOURNAL_ID' =>    $journal_id,
                     'COMPANY_ID' =>    1,
                     'CURRENCY_ID' =>    36,
-                    'AMOUNT_UNTAXED' => 0.000,
-                    'AMOUNT_TAX' => 0.000,
+                    'AMOUNT_UNTAXED' => $untaxed,
+                    'AMOUNT_TAX' => $untaxed,
                     'AMOUNT_TOTAL' =>    $amount_total,
                     'AMOUNT_RESIDUAL' => 0,
-                    'AMOUNT_UNTAXED_SIGNED' => 0,
+                    'AMOUNT_UNTAXED_SIGNED' => $untaxed_signed,
                     'AMOUNT_TAX_SIGNED' =>    0,
-                    'AMOUNT_TOTAL_SIGNED' =>    $amount_total,
+                    'AMOUNT_TOTAL_SIGNED' =>    $untaxed_signed,
                     'AMOUNT_RESIDUAL_SIGNED' =>    0,
                     'AUTO_POST' =>    'false', //boolean
                     'INVOICE_USER_ID' => 2,
@@ -225,7 +235,10 @@ if ($result) {
             }
 
             if ($new_am_id) { // IF IT HAS ACCOUNT_MOVE_ID
-
+                $condition_not_accrual = $is_accrual != 'true' && $debit > 0 ? true : false;
+                $am_acc_internal_type = $condition_not_accrual == true ? 'other' : 'payable';
+                $aml_price_unit =   $condition_not_accrual == true ? $debit : null;
+                $exlude_from_inv = $is_accrual != 'true' ?   (!$condition_not_accrual ? 'true' : 'false') : NULL;
 
                 $aml_entries = [
                     'NAME' => $aml_label,
@@ -237,7 +250,7 @@ if ($result) {
                     'JOURNAL_ID' => $journal_id,
                     'COMPANY_ID' => 1,
                     'COMPANY_CURRENCY_ID' => 36,
-                    'ACCOUNT_INTERNAL_TYPE' => 'other',
+                    'ACCOUNT_INTERNAL_TYPE' => $am_acc_internal_type,
                     'ACCOUNT_ROOT_ID' => $aa_root_id,
                     'ACCOUNT_ID' => $account_id,
                     // sequence	?
@@ -246,14 +259,18 @@ if ($result) {
                     'DEBIT' =>    $debit,
                     'CREDIT' =>    $credit,
                     'BALANCE' =>    $balance,
+                    'PRICE_SUBTOTAL' => $balance,
+                    'PRICE_TOTAL' => $balance,
                     'RECONCILED' =>    'false', //boolean
                     'BLOCKED' => 'false', //boolean
                     'TAX_EXIGIBLE' => 'true', //boolean
                     'AMOUNT_RESIDUAL' => $amount_total,
                     'AMOUNT_RESIDUAL_CURRENCY' => 0.0,
-                    'ANALYTIC_ACCOUNT_ID' => $analytic_acount_id ?: null,
+                    'ANALYTIC_ACCOUNT_ID' => $analytic_acount_id ? $analytic_acount_id : null,
                     'ASSET_MRR' => 0.00,
-                    'DEBIT_DATA_PAYABLE' => $amount_total
+                    'DEBIT_DATA_PAYABLE' => $amount_total,
+                    'PRICE_UNIT' => $balance,
+                    'EXCLUDE_FROM_INVOICE_TAB' => $exlude_from_inv
                     // 'DEBIT_DATA' => $amount_total / $php_rate,
                     // bcdl_amount	?
                 ];

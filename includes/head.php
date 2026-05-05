@@ -86,6 +86,7 @@ if (!isset($_SESSION['ppc'])) {
 <script src='public/theme/plugins/spectrum-1.8.1/spectrum.js'></script>
 <link rel='stylesheet' href='public/theme/plugins/spectrum-1.8.1/spectrum.css' />
 
+
 <script src="public/app/helpers.js"></script>
 
 <!-- <script src="public/theme/plugins/jquery-datatable/select1.3.1/dataTables,select.min.js"></script> -->

@@ -150,6 +150,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 <th>Reversal Option</th>
                 <th>Dist Category</th>
                 <th>Accrual Date Range</th>
+                <th>Year Month</th>
                 <th>Debit Account</th>
                 <!-- <th>Action</th> -->
                 <!-- <th>Account Name</th>
@@ -1119,6 +1120,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     if (data.is_reversed !== null && data.is_reversed == 't') {
                         $(row).addClass('row-green').css('background-color', '#4CAF50'); // orange
                     }
+                    if (data.from_previous !== null && data.from_previous == 'true') {
+                        $(row).addClass('row-yellow').css('background-color', '#FFA500'); // orange
+                    }
                 },
 
                 drawCallback: function() {
@@ -1293,6 +1297,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             return html;
                         }
                     },
+
                     {
                         data: null,
                         render: function(row) {
@@ -1308,6 +1313,10 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                 </span>
                             `;
                         }
+                    },
+                    {
+                        data: 'year_month',
+
                     },
                     {
                         data: null,

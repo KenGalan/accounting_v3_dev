@@ -7,6 +7,9 @@ $db = new Postgresql();
 $conn = $db->getConnection();
 
 $parameter = isset($_POST['year_month']) ? "ACDR.YEAR_MONTH = '" . $_POST['year_month'] . "'" : 'ACDR.ID = ' . $_POST['date_range_id'];
+$accrual_where = isset($_POST['is_accrual']) && $_POST['is_accrual'] == 'false' ? 'NOT' : '';
+$distributed_where =  isset($_POST['is_accrual']) && $_POST['is_accrual'] == 'false' ? 'ACDR.is_ap_distributed' : 'ACDR.is_dept_distributed';
+
 // echo $parameter;
 // exit;
 
@@ -38,11 +41,11 @@ maa.journal_name    JOURNAL,
     END AS CREDIT,
     ACDR.YEAR_MONTH
 FROM M_ACC_MONTH ACDR
-join M_ACC_ACCRUAL maa on maa.MONTH_ID = ACDR.ID AND MAA.IS_ACCRUAL
+join M_ACC_ACCRUAL maa on maa.MONTH_ID = ACDR.ID AND $accrual_where MAA.IS_ACCRUAL
 join M_ACC_ACCRUAL_DIST aad on aad.accrual_id = maa.id
 JOIN ACCOUNT_ACCOUNT AA ON aad.ACCOUNT_ID = AA.ID
 WHERE $parameter
-AND ACDR.is_dept_distributed = 'true';
+AND $distributed_where = 'true';
 ";
 
 $res = pg_query($conn, $query);

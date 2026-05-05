@@ -39,15 +39,16 @@
 
 <div class="mb-3">
     <button type="button" id="toggleInputBtn" class="btn btn-primary" style="margin-bottom: 15px;">
-        Add Account
+        Add Referece
     </button>
 </div>
 
 <div id="accountInputContainer" style="display:none; margin-bottom:15px;">
     <div class="row">
         <div class="col-md-4">
-            <select id="accountSelect" class="form-control" multiple style="width:100%;">
-            </select>
+            <!-- <select id="accountSelect" class="form-control" multiple style="width:100%;">
+            </select> -->
+            <input type="text" id="referenceInput" placeholder="Enter Reference" class="form-control">
         </div>
         <div class="col-md-2">
             <button type="button" id="addAccountRowBtn" class="btn btn-success">
@@ -60,7 +61,7 @@
 <table id="accountTable" class="table table-bordered table-striped w-100 !important">
     <thead>
         <tr>
-            <th>Account</th>
+            <th>Reference</th>
             <th>Date Added</th>
             <th>Added By</th>
             <!-- <th>Changed By</th>
@@ -80,7 +81,7 @@
                 dataSrc: 'data'
             },
             columns: [{
-                    data: 'account'
+                    data: 'reference'
                 },
                 {
                     data: 'date_added'
@@ -107,34 +108,35 @@
             $('#accountInputContainer').slideToggle();
         });
 
-        $('#accountSelect').select2({
-            placeholder: "Select Account(s)",
-            allowClear: true,
-            width: '100%',
-            ajax: {
-                url: 'ajax/fetch/fetch_account_account.php',
-                dataType: 'json',
-                delay: 250,
-                data: function(params) {
-                    return {
-                        search: params.term || ''
-                    };
-                },
-                processResults: function(data) {
-                    return {
-                        results: data
-                    };
-                },
-                cache: true
-            }
-        });
+        // $('#accountSelect').select2({
+        //     placeholder: "Select Account(s)",
+        //     allowClear: true,
+        //     width: '100%',
+        //     ajax: {
+        //         url: 'ajax/fetch/fetch_account_account.php',
+        //         dataType: 'json',
+        //         delay: 250,
+        //         data: function(params) {
+        //             return {
+        //                 search: params.term || ''
+        //             };
+        //         },
+        //         processResults: function(data) {
+        //             return {
+        //                 results: data
+        //             };
+        //         },
+        //         cache: true
+        //     }
+        // });
 
         $('#addAccountRowBtn').on('click', function() {
-            let accountIds = $('#accountSelect').val();
-            let selectedData = $('#accountSelect').select2('data');
+            // let accountIds = $('#accountSelect').val();
+            let reference = $('#referenceInput').val().trim();
+            // let selectedData = $('#accountSelect').select2('data');
 
-            if (!accountIds || accountIds.length === 0) {
-                alert('Please select at least one account.');
+            if (!reference) {
+                swal('Please enter a reference.');
                 return;
             }
 
@@ -143,34 +145,37 @@
                 type: 'POST',
                 dataType: 'json',
                 data: {
-                    account_ids: accountIds
+                    // account_ids: accountIds,
+                    reference: reference
                 },
                 success: function(response) {
                     if (response.status === 'success') {
+                        swal('Successfully added reference.');
+                        $('#referenceInput').val('');
 
-                        selectedData.forEach((item, index) => {
+                        // selectedData.forEach((item, index) => {
 
-                            let saved = response.data[index];
+                            let saved = response.data[0];
 
                             accountTable.row.add({
                                 id: saved.id,
-                                account: item.text,
+                                reference: saved.reference,
                                 date_added: saved.date_added,
                                 added_by: saved.added_by,
                                 // changed_by: '',
                                 // changed_on: ''
                             }).draw(false);
-                        });
+                        // });
 
-                        $('#accountSelect').val(null).trigger('change');
+                        // $('#accountSelect').val(null).trigger('change');
                         $('#accountInputContainer').slideUp();
 
                     } else {
-                        alert(response.message);
+                        swal(response.message);
                     }
                 },
                 error: function() {
-                    alert('Error saving accounts.');
+                    swal('Error saving accounts.');
                 }
             });
         });
@@ -181,7 +186,7 @@
 
             swal({
                 title: "Are you sure?",
-                text: "This account will be removed.",
+                text: "This reference will be removed.",
                 type: "warning",
                 showCancelButton: true,
                 confirmButtonColor: "#DD6B55",
@@ -207,14 +212,14 @@
                                     .remove()
                                     .draw(false);
 
-                                swal("Deleted!", "Account has been removed.", "success");
+                                swal("Deleted!", "Reference has been removed.", "success");
 
                             } else {
                                 swal("Error", response.message, "error");
                             }
                         },
                         error: function() {
-                            swal("Error", "Error deleting account.", "error");
+                            swal("Error", "Error deleting reference.", "error");
                         }
                     });
 

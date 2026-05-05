@@ -1,4 +1,5 @@
 <?php
+// session_start();
 $basename_server = basename($_SERVER['SCRIPT_NAME']);
 
 $db = new Postgresql();
@@ -39,6 +40,150 @@ if ($res && pg_num_rows($res) > 0) {
     $hasSystemAccess = true;
 }
 
+$setup_pages = [
+    'dept_maintenance.php',
+    'dept_group.php',
+    'category_acc_maintenance.php',
+    'account_tagging.php',
+    'distribution_cost_maintenance.php',
+    'date_range_maintenance.php',
+    'user_maintenance.php'
+];
+
+$isSetupActive = in_array($basename_server, $setup_pages);
+
+$dist_pages = [
+    'ap_distribution.php',
+    'custom_distribution.php'
+];
+
+$isDistActive = in_array($basename_server, $dist_pages);
+
+$accrual_pages = [
+    'accrual_customized.php',
+    'reverse_accrual.php'
+];
+
+$isAccrualActive = in_array($basename_server, $accrual_pages);
+
+// Added by Ivan - Visitor Count
+$sessionDir = __DIR__ . '/active_sessions';
+$killDir    = __DIR__ . '/killed_sessions';
+
+if (!is_dir($sessionDir)) {
+    mkdir($sessionDir, 0777, true);
+}
+
+if (!is_dir($killDir)) {
+    mkdir($killDir, 0777, true);
+}
+
+$empNo    = $_SESSION['ppc']['emp_no'];
+$fullName = $_SESSION['ppc']['fullname'];
+
+
+if (isset($_GET['get_active_users'])) {
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
+    echo json_encode(getActiveUsers($sessionDir));
+    exit;
+}
+
+
+if (isset($_GET['kill_session'])) {
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
+    $currentEmp = $_SESSION['ppc']['emp_no'];
+
+    if ($currentEmp != '10947') {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Unauthorized'
+        ]);
+        exit;
+    }
+
+    $targetEmp = $_GET['emp_no'];
+
+    if ($targetEmp == $currentEmp) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'You cannot kill your own session.'
+        ]);
+        exit;
+    }
+
+    $activeFile = $sessionDir . '/' . basename($targetEmp) . '.json';
+    $killFile   = $killDir . '/' . basename($targetEmp) . '.kill';
+
+    file_put_contents($killFile, time());
+
+    if (file_exists($activeFile)) {
+        unlink($activeFile);
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'User session killed.'
+    ]);
+    exit;
+}
+
+
+if ($empNo) {
+    $killFile = $killDir . '/' . $empNo . '.kill';
+
+    if (file_exists($killFile)) {
+        unlink($killFile);
+
+        $activeFile = $sessionDir . '/' . $empNo . '.json';
+        if (file_exists($activeFile)) {
+            unlink($activeFile);
+        }
+
+        session_unset();
+        session_destroy();
+
+        header("Location: index.php");
+        exit;
+    }
+}
+
+
+if ($empNo) {
+    file_put_contents($sessionDir . '/' . $empNo . '.json', json_encode([
+        'emp_no' => $empNo,
+        'name'   => $fullName,
+        'time'   => time()
+    ]));
+}
+
+
+function getActiveUsers($sessionDir)
+{
+    $limit = time() - (5 * 60);
+    $users = [];
+
+    foreach (glob($sessionDir . '/*.json') as $file) {
+        $data = json_decode(file_get_contents($file), true);
+
+        if ($data && $data['time'] >= $limit) {
+            $users[] = $data;
+        } else {
+            unlink($file);
+        }
+    }
+
+    return $users;
+}
+
+$activeUsers = getActiveUsers($sessionDir);
+$activeCount = count($activeUsers); // END
+
 ?>
 <style>
     body.sidebar-hidden #leftsidebar {
@@ -53,28 +198,36 @@ if ($res && pg_num_rows($res) > 0) {
     #leftsidebar {
         transition: 0.3s;
     }
+
+    .list {
+        height: 100% !important;
+    }
+
+    .slimScrollDiv {
+        height: 100% !important;
+    }
 </style>
 
-<aside id="leftsidebar" class="sidebar" style="height:185vh">
-    <div class="menu">
-        <ul class="list">
+<aside id="leftsidebar" class="sidebar" style="height:100%">
+    <div class="menu" style="height:100%">
+        <ul class="list" style="height:100% !important;">
             <li class="header">MAIN NAVIGATION</li>
 
-            <!-- <?php if ($hasDashboardAccess) { ?>
-                <li class="<?php echo ($basename_server == 'journal_entries.php' ? 'active' : ''); ?>">
-                    <a href="journal_entries.php" class="waves-effect waves-block">
+            <?php if ($hasDashboardAccess) { ?>
+                <li class="<?php echo ($basename_server == 'dashboard.php' ? 'active' : ''); ?>">
+                    <a href="dashboard.php" class="waves-effect waves-block">
                         <i class="material-icons">dashboard</i>
                         <span>Dashboard</span>
-                    </a> 
+                    </a>
                 </li>
-            <?php } ?> -->
+            <?php } ?>
 
-            <li class="<?php echo ($basename_server == 'generated_distribution.php' ? 'active' : ''); ?>">
+            <!-- <li class="<?php echo ($basename_server == 'generated_distribution.php' ? 'active' : ''); ?>">
                 <a href="generated_distribution.php" class="waves-effect waves-block">
                     <i class="material-icons">dashboard</i>
                     <span>Distributed A/P</span>
                 </a>
-            </li>
+            </li> -->
             <!-- <li class="<?php echo ($basename_server == 'ap_distribution.php' ? 'active' : ''); ?>">
                 <a href="ap_distribution.php" class="waves-effect waves-block">
                     <i class="material-icons">bookmark</i>
@@ -88,7 +241,7 @@ if ($res && pg_num_rows($res) > 0) {
                 </a>
             </li> -->
 
-            <li class="<?php echo (($basename_server == 'admin_maint.php') ? 'active' : ''); ?>">
+            <li class="<?php echo ($isDistActive ? 'active' : ''); ?>">
                 <a href="javascript:void(0);" class="waves-effect waves-block menu-toggle">
                     <i class="material-icons">bookmark</i>
                     <span>Distribution</span>
@@ -111,7 +264,7 @@ if ($res && pg_num_rows($res) > 0) {
             </li>
 
             <?php if ($_SESSION['ppc']['admin'] == "1" || $hasAdminAccess) { ?>
-                <li class="<?php echo (($basename_server == 'admin_maint.php') ? 'active' : ''); ?>">
+                <li class="<?php echo ($isAccrualActive ? 'active' : ''); ?>">
                     <a href="javascript:void(0);" class="waves-effect waves-block menu-toggle">
                         <i class="material-icons">history</i>
                         <span>Accrual</span>
@@ -139,17 +292,17 @@ if ($res && pg_num_rows($res) > 0) {
             <?php } ?>
 
 
-            <?php if ($_SESSION['ppc']['emp_no'] == "10947" || $_SESSION['ppc']['emp_no'] == "10929") { ?>
+            <!-- <?php if ($_SESSION['ppc']['emp_no'] == "10947" || $_SESSION['ppc']['emp_no'] == "10929") { ?>
                 <li class="<?php echo ($basename_server == 'user_guide.php' ? 'active' : ''); ?>">
                     <a href="user_guide.php" class="waves-effect waves-block">
                         <i class="material-icons">book</i>
                         <span>User Guide</span>
                     </a>
                 </li>
-            <?php } ?>
+            <?php } ?> -->
 
             <?php if ($_SESSION['ppc']['admin'] == "1" || $hasAdminAccess) { ?>
-                <li class="<?php echo (($basename_server == 'admin_maint.php') ? 'active' : ''); ?>">
+                <li class="<?php echo ($isSetupActive ? 'active' : ''); ?>">
                     <a href="javascript:void(0);" class="waves-effect waves-block menu-toggle">
                         <i class="material-icons">settings</i>
                         <span>Setup</span>
@@ -161,31 +314,33 @@ if ($res && pg_num_rows($res) > 0) {
                                     <span>Department</span>
                                 </a>
                             </li>
-                            <li class="<?php echo ($basename_server == 'dept_group.php' ? 'active' : ''); ?>">
+                            <!-- <li class="<?php echo ($basename_server == 'dept_group.php' ? 'active' : ''); ?>">
                                 <a href="dept_group.php" class="waves-effect waves-block">
                                     <span>Department Group</span>
                                 </a>
-                            </li>
+                            </li> -->
                             <li class="<?php echo ($basename_server == 'category_acc_maintenance.php' ? 'active' : ''); ?>">
                                 <a href="category_acc_maintenance.php" class="waves-effect waves-block">
                                     <span>Template Maintenance</span>
                                 </a>
                             </li>
-                            <li class="<?php echo ($basename_server == 'account_tagging.php' ? 'active' : ''); ?>">
-                                <a href="account_tagging.php" class="waves-effect waves-block">
-                                    <span>Magic Setup?</span>
-                                </a>
-                            </li>
+                            <?php if ($userDept === "Management Information System") { ?>
+                                <li class="<?php echo ($basename_server == 'account_tagging.php' ? 'active' : ''); ?>">
+                                    <a href="account_tagging.php" class="waves-effect waves-block">
+                                        <span>Custom Account Setup</span>
+                                    </a>
+                                </li>
+                            <?php } ?>
                             <li class="<?php echo ($basename_server == 'distribution_cost_maintenance.php' ? 'active' : ''); ?>">
                                 <a href="distribution_cost_maintenance.php" class="waves-effect waves-block">
                                     <span>Distribution Percentage</span>
                                 </a>
                             </li>
-                            <li class="<?php echo ($basename_server == 'date_range_maintenance.php' ? 'active' : ''); ?>">
+                            <!-- <li class="<?php echo ($basename_server == 'date_range_maintenance.php' ? 'active' : ''); ?>">
                                 <a href="date_range_maintenance.php" class="waves-effect waves-block">
                                     <span>Setup Date Range</span>
                                 </a>
-                            </li>
+                            </li> -->
                             <!-- <li class="<?php echo ($basename_server == 'acc_tagging_maintenance.php' ? 'active' : ''); ?>">
                                 <a href="acc_tagging_maintenance.php" class="waves-effect waves-block">
                                     <span>Account Tagging</span>
@@ -235,7 +390,14 @@ if ($res && pg_num_rows($res) > 0) {
             </li>
 
         </ul>
+
     </div>
+    <?php if ($_SESSION['ppc']['emp_no'] == "10947") { ?>
+        <div class="activeVisitorCount" style="cursor:pointer; padding: 15px;">
+            <p>Active Visitors: <span id="visitorCount"><?php echo $activeCount; ?></span></p>
+        </div>
+    <?php } ?>
+
 </aside>
 
 <div id="modalBackdrop" style="
@@ -371,4 +533,77 @@ if ($res && pg_num_rows($res) > 0) {
             localStorage.setItem('sidebarHidden', '0');
         }
     });
+
+    //   $(document).on('click', '.activeVisitorCount', function () {
+    //     $.ajax({
+    //         url: window.location.href,
+    //         type: 'GET',
+    //         data: { get_active_users: 1 },
+    //         success: function (res) {
+    //             let users = JSON.parse($.trim(res));
+    //             let html = '<div style="text-align:left;">';
+
+    //             users.forEach(function (u) {
+    //                 let lastSeen = new Date(u.time * 1000).toLocaleTimeString();
+
+    //                 html += `
+    //                     <div style="margin-bottom:10px;">
+    //                         <b>${u.name}</b><br>
+    //                         <small>Emp No: ${u.emp_no}</small><br>
+    //                         <small>Last active: ${lastSeen}</small><br>
+    //                         <button type="button" class="killUser btn btn-danger btn-xs" data-emp="${u.emp_no}">
+    //                             Kill Session
+    //                         </button>
+    //                     </div>
+    //                     <hr>
+    //                 `;
+    //             });
+
+    //             html += '</div>';
+
+    //             swal({
+    //                 title: "Active Users (" + users.length + ")",
+    //                 text: html,
+    //                 html: true
+    //             });
+    //         }
+    //     });
+    // });
+
+    // $(document).on('click', '.killUser', function (e) {
+    //     e.preventDefault();
+    //     e.stopPropagation();
+
+    //     console.log('Kill button clicked');
+
+    //     let empNo = $(this).data('emp');
+    //     killUserSession(empNo);
+    // });
+
+    // function killUserSession(empNo) {
+    //     console.log('Function called:', empNo);
+
+    //     $.ajax({
+    //         url: window.location.href,
+    //         type: 'GET',
+    //         data: {
+    //             kill_session: 1,
+    //             emp_no: empNo
+    //         },
+    //         success: function (res) {
+    //             let data = JSON.parse($.trim(res));
+    //             console.log(data);
+
+    //             if (data.success) {
+    //                 swal("Success", data.message, "success");
+    //             } else {
+    //                 swal("Warning", data.message, "warning");
+    //             }
+    //         },
+    //         error: function (xhr) {
+    //             console.log(xhr.responseText);
+    //             swal("Error", "Cannot kill session.", "error");
+    //         }
+    //     });
+    // }
 </script>

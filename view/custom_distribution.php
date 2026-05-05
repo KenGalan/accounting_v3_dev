@@ -198,7 +198,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 <!-- <label for="select">SELECT MONTH YEAR</label> -->
 <div class="distTable_wrapper">
 
-
     <div class="container-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
     <input type="month" name="month_year" id="yearMonthSelect" class="form-control" style="width:250px;">
     <button class="btn btn-success" id="runBtnDist" style="display: none;">RUN DISTTRIBUTION</button>
@@ -216,7 +215,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             <div class="arrow-separator">➜</div>
 
             <div class="form-group date-group">
-                <label>To</label>
+                <label>To</label> 
                 <input type="date" id="massToDate" class="form-control" style="padding:15px;">
             </div>
 
@@ -288,9 +287,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 </h5>
                 <!-- <h5>Edit the date range</h5> -->
             <div id="filterSection"  style="text-align:right; margin-left:auto;">
-                <label>From:</label>
+                <label id="fromDateLabel">From:</label>
                 <input type="date" id="fromDate" style="border: none;" disabled>
-                <label>To:</label>
+                <label id="toDateLabel">To:</label>
                 <input type="date" id="toDate" style="border: none;" disabled>
                 <button id="filterBtn" class="btn btn-success" style="display:none;">Apply</button>
                 <!-- <button id="editDateRange" class="btn-primary">Edit</button> -->
@@ -1501,8 +1500,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             dt.distributionEntriesTbl.clear();
                             dt.distributionEntriesTbl.rows.add(res.data).draw();
                         }
-
-
 
                         // console.log(res.data)
                         $('#distributionEntriesContainer').show();

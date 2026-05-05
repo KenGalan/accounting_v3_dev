@@ -421,7 +421,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             journal_acc_global = await journalAccList();
             initDistTable();
             // loadYearMonth();
-            fetchAccrual('')
+
+            fetchAccrual(currentMonthYearValue)
         }
 
         init();
@@ -553,7 +554,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
 
         $("#btnRunDist").on("click", function() {
-            let yearMonth = '02-17-2026';
+            // let yearMonth = '02-17-2026';
+            let yearMonth = $(this).data('yearmonth-id');
             let month_id = $(this).data('id');
 
             console.log('MONTH ID', month_id);
@@ -1835,10 +1837,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 },
 
                 success: function(response) {
-                    console.log(response);
-
-
-                    init();
+                    // console.log(response );
+                    console.log(yearMonth)
+                    fetchAccrual(yearMonth)
                     previewJournalEntries(month_id, yearMonth)
                     $('#previewInsertToOdoo').modal('show');
                     $('#previewInsertToOdoo #btnSubmitToOdoo').attr('data-id', month_id)
@@ -2180,7 +2181,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 method: "POST",
                 data: {
                     accrual_id: accrual_id,
-                    date_range_id: date_range_id
+                    date_range_id: date_range_id,
+                    is_accrual: false
                 },
                 dataType: "json",
                 success: function(data) {
@@ -2261,7 +2263,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 method: "POST",
                 data: {
                     journal_entries_id: journal_entries_id,
-                    date_range_id: date_range_id
+                    date_range_id: date_range_id,
+                    is_accrual: false
                 },
                 dataType: "json",
                 success: function(data) {
@@ -2479,7 +2482,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 url: "ajax/fetch/generated_distribution.php",
                 method: "POST",
                 data: {
-                    date_range_id: date_range_id
+                    date_range_id: date_range_id,
+                    is_accrual: false
                 },
                 dataType: "json",
                 success: function(data) {

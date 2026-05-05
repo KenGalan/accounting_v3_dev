@@ -409,10 +409,12 @@ MAA.TOTAL_ACCRUAL_VALUE total_debit,
      dp.wip_account,
      dp.journal_id,
       MAA.FROM_DATE,
-      MAA.TO_DATE
+      MAA.TO_DATE,
+	  SBU.SBU
 FROM
       M_ACC_ACCRUAL MAA
       JOIN detailed_percentage DP ON DP.m_acc_category_id =MAA.DIST_CATEG_ID
+      LEFT JOIN M_ACC_SBU_MAINT SBU ON SBU.ANALYTIC_ACCOUNT_ID = DP.ANALYTIC_ACCOUNT_ID
       WHERE maa.month_id = $month_id AND $accrual_where MAA.IS_ACCRUAL
       --MAA.FROM_DATE = TO_dATE('2026-03-20','YYYY-MM-DD')  AND maa.TO_DATE = TO_dATE('2026-03-31','YYYY-MM-DD')
       )
@@ -433,7 +435,8 @@ ae.accrual_id,
              ae.wip_account,
              ae.journal_id,
                   AE.FROM_DATE,
-      AE.TO_DATE
+      AE.TO_DATE,
+	  AE.SBU
  from accrual_entry ae)
  , final_DEPT_DIST as (
  select 
@@ -452,7 +455,7 @@ ae.accrual_id,
      journal_id,
           FROM_DATE,
       TO_DATE,
-     total_debit total_accrual_debit
+     total_debit total_accrual_debit,SBU
  from 
  ranked
  ), mfg as (
@@ -468,8 +471,7 @@ ae.accrual_id,
      ae.journal_id
      from final_dept_dist AE
      JOIN M_ACC_MO_WIP ADM ON ADM.FROM_DATE = AE.FROM_DATE  AND ADM.TO_DATE = AE.TO_DATE AND ADM.REMARKS !='INVOICED BUT NO MOVEMENT'
-     where  ae.wip_account !=0 and ae.wip_account is not null --and AE.DEPT = 'MANUFACTURING/PRODUCT LINE'
--- 		 select * from M_ACC_MO_WIP where from_date = to_date('03-01-2026','MM-DD-YYYY') AND REMARKS !='INVOICED BUT NO MOVEMENT'
+     where  ae.wip_account !=0 AND AE.SBU IS NULL
  ), mfg_sbu as(
  select 
  m.accrual_id,
@@ -564,7 +566,7 @@ ae.TO_DATE
 from
 final_DEPT_DIST ae 
 where
-AE.wip_account =0
+AE.wip_account =0 OR( AE.SBU IS NOT NULL AND AE.WIP_ACCOUNT != 0 AND AE.WIP_ACCOUNT IS NOT NULL)
 order by accrual_id, dept_group)
 , debit_credit_DIST as(
  select
