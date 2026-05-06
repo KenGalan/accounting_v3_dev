@@ -4,7 +4,9 @@ session_start();
 
 $db = new Postgresql();
 $db_ken = new PostgresqlKen();
-$month_id = $_POST['month_id'];
+$month_id = isset($_POST['month_id']) ?  $_POST['month_id'] : null;
+$yearMonth = isset($_POST['yearMonth']) ?  $_POST['yearMonth'] : null;
+$cust_data = isset($_POST['cust_data']) ? json_decode($_POST['cust_data'], true) : [];
 $is_accrual = $_POST['is_accrual'];
 $user = $_SESSION['ppc']['emp_no'];
 
@@ -15,14 +17,54 @@ endif; //NOT ISSET SESSION
 
 $accrual_where = $is_accrual == 'true' ? '' : 'NOT';
 
-$selectDateRange =
-    $db_ken->fetchAll("SELECT 
+if ($month_id) {
+    // echo 'meron';
+    $selectDateRange =
+        $db_ken->fetchAll("SELECT 
 DISTINCT
 to_char(FROM_DATE,'YYYY-MM-DD') start_date, 
 to_char(TO_DATE, 'YYYY-MM-DD') end_date,
 to_char(TO_DATE, 'MM/DD/YYYY') end_date_slash
 , TO_CHAR(to_date(to_char(FROM_DATE ,'YYYY-MM'),'YYYY-MM') + INTERVAL '1 month - 1 day', 'MM/DD/YYYY') LAST_DATE_OF_MONTH
-FROM M_ACC_ACCRUAL WHERE ACTIVE AND $accrual_where IS_ACCRUAL");
+FROM M_ACC_ACCRUAL WHERE ACTIVE AND $accrual_where IS_ACCRUAL AND MONTH_ID =$month_id");
+} else { //checking if month exists
+
+
+    foreach ($cust_data as $row) {
+        // echo $row['cd_id']; 
+        $cd_id = $row['cd_id'];
+        $distInfo = $db_ken->fetchAll("SELECT 
+        DISTINCT
+        to_char(FROM_DATE,'YYYY-MM-DD') start_date, 
+        to_char(TO_DATE, 'YYYY-MM-DD') end_date,
+        to_char(TO_DATE, 'MM/DD/YYYY') end_date_slash
+        , TO_CHAR(to_date(to_char(FROM_DATE ,'YYYY-MM'),'YYYY-MM') + INTERVAL '1 month - 1 day', 'MM/DD/YYYY') LAST_DATE_OF_MONTH
+        FROM m_acc_cust_dist WHERE ACTIVE and id =$cd_id");
+    }
+    exit;
+    $hasMonth = $db_ken->fetchRow("select id from m_Acc_month where year_month ='$yearMonth'");
+
+    if (!$hasMonth) {
+        $month_entries = [
+            'YEAR_MONTH' =>    $yearMonth
+        ];
+
+        $month_id = $db_ken->insert_get_id('M_ACC_MONTH', $month_entries, 'id');
+        echo 'wala';
+    } else {
+        $month_id = $hasMonth['id'];
+        echo 'meron';
+    }
+
+
+    echo  $month_id;
+    exit;
+}
+
+
+
+
+
 
 if ($selectDateRange) {
     foreach ($selectDateRange as $date_range) {
@@ -37,7 +79,7 @@ if ($selectDateRange) {
         }
         // exit;
 
-        $qmos = "	with mos as (SELECT DISTINCT MO,IS_INVOICED FROM M_ACC_MO_WIP WHERE MONTH_ID != $month_id),
+        $qmos = "with mos as (SELECT DISTINCT MO,IS_INVOICED FROM M_ACC_MO_WIP WHERE MONTH_ID != $month_id),
          mo_with_trx AS (
            SELECT DISTINCT mp.name, mp.id AS mo_id
            FROM mrp_production mp
@@ -338,22 +380,7 @@ if ($selectDateRange) {
 
             ];
 
-            // $db_ken->insert('M_ACC_TO_WIP', [
-            //     'MAIN_ID' => $old_accrual_id,
-            //     'ACCOUNT_CODE' => $itemToWip['account_code'],
-            //     'ACCOUNT_ID' => $itemToWip['account_id'],
-            //     'CREDIT_ACCOUNT_ID' => $itemToWip['credit_account_id'],
-            //     'ANALYTIC_ACCOUNT' => $itemToWip['analytic_account'],
-            //     'ANALYTIC_ACCOUNT_ID' => $itemToWip['analytic_account_id'] ?: null,
-            //     'MOS' => $itemToWip['mos'],
-            //     'DEBIT' => $itemToWip['debit'] ?: null,
-            //     'CREDIT' => $itemToWip['credit'] ?: null,
-            //     'ITEM_LABEL' => $itemToWip['item_label'],
-            //     // 'RAW_DEBIT' => $itemToWip['raw_debit'] ?: null,
-            //     // 'RAW_CREDIT' => $itemToWip['raw_credit'] ?: null,
-            //     'ADDED_BY' => $user,
-            //     'SBU' => $itemToWip['sbu']
-            // ]);
+
             $resultLineItems = $db_ken->insert('M_ACC_MO_WIP', $dataMoEntries);
         }
     }

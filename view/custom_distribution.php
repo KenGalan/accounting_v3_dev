@@ -116,78 +116,81 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         border: 2px solid #dc3545 !important;
         background-color: #fff5f5;
     }
+
     .dataTables_length {
         display: none !important;
     }
-            input[type=date] {
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-.mass-filter-panel {
-    padding: 18px 20px;
-    margin-top: 15px;
-    margin-bottom: 15px;
-}
 
-.mass-filter-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 28px;
-    flex-wrap: wrap;
-}
+    input[type=date] {
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
 
-.mass-filter-row .form-group {
-    margin-bottom: 0;
-}
+    .mass-filter-panel {
+        padding: 18px 20px;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
 
-.mass-filter-row label {
-    display: block;
-    color: #000000;
-    font-weight: bold;
-    margin-bottom: 8px;
-}
+    .mass-filter-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 28px;
+        flex-wrap: wrap;
+    }
 
-.date-group {
-    width: 200px;
-}
+    .mass-filter-row .form-group {
+        margin-bottom: 0;
+    }
 
-.sbu-group,
-.mo-group {
-    width: 220px;
-}
+    .mass-filter-row label {
+        display: block;
+        color: #000000;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
 
-.button-group {
-    width: 90px;
-}
+    .date-group {
+        width: 200px;
+    }
 
-.mass-filter-row .form-control,
-.mass-filter-row .select2-container .select2-selection {
-    height: 47px !important;
-    background: transparent !important;
-    border: 1px solid #000000 !important;
-    color: #000000 !important;
-    border-radius: 0 !important;
-}
+    .sbu-group,
+    .mo-group {
+        width: 220px;
+    }
 
-.arrow-separator {
-    color: #000000;
-    font-size: 28px;
-    font-weight: bold;
-    padding-bottom: 10px;
-}
+    .button-group {
+        width: 90px;
+    }
 
-.mass-note {
-    color: darkred;
-    font-weight: bold;
-    margin-top: 25px;
-    font-size: 16px;
-}
+    .mass-filter-row .form-control,
+    .mass-filter-row .select2-container .select2-selection {
+        height: 47px !important;
+        background: transparent !important;
+        border: 1px solid #000000 !important;
+        color: #000000 !important;
+        border-radius: 0 !important;
+    }
 
-#filterBtnMass {
-    height: 47px;
-    width: 100%;
-}
+    .arrow-separator {
+        color: #000000;
+        font-size: 28px;
+        font-weight: bold;
+        padding-bottom: 10px;
+    }
+
+    .mass-note {
+        color: darkred;
+        font-weight: bold;
+        margin-top: 25px;
+        font-size: 16px;
+    }
+
+    #filterBtnMass {
+        height: 47px;
+        width: 100%;
+    }
 </style>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -199,8 +202,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 <div class="distTable_wrapper">
 
     <div class="container-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-    <input type="month" name="month_year" id="yearMonthSelect" class="form-control" style="width:250px;">
-    <button class="btn btn-success" id="runBtnDist" style="display: none;">RUN DISTTRIBUTION</button>
+        <input type="month" name="month_year" id="yearMonthSelect" class="form-control" style="width:250px;">
+        <button class="btn btn-success" id="runBtnDist" style="display: none;">RUN DISTTRIBUTION</button>
     </div>
 
     <div id="massDateRangeSection" class="mass-filter-panel" style="display:none;">
@@ -215,7 +218,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             <div class="arrow-separator">➜</div>
 
             <div class="form-group date-group">
-                <label>To</label> 
+                <label>To</label>
                 <input type="date" id="massToDate" class="form-control" style="padding:15px;">
             </div>
 
@@ -246,31 +249,31 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
 
 </div>
-    </div>
-    
-
-    <table id="distTable" class="table table-bordered table-striped" style="width:100%">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Journal Entry ID</th>
-                <th>Journal Entry Name</th>
-                <th>Reference</th>
-                <th>Total Amount</th>
-                <th>Accounting Date</th>
-                <th>Status</th>
-                <th>From - to</th>
-                <th>SBU</th>
-                <th>MO Distribution</th>
-                <th>Action</th>
-
-            </tr>
-        </thead>
-        <tbody>
+</div>
 
 
-        </tbody>
-    </table>
+<table id="distTable" class="table table-bordered table-striped" style="width:100%">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Journal Entry ID</th>
+            <th>Journal Entry Name</th>
+            <th>Reference</th>
+            <th>Total Amount</th>
+            <th>Accounting Date</th>
+            <th>Status</th>
+            <th>From - to</th>
+            <th>SBU</th>
+            <th>MO Distribution</th>
+            <th>Action</th>
+
+        </tr>
+    </thead>
+    <tbody>
+
+
+    </tbody>
+</table>
 </div>
 
 <div class="modal fade" id="myModalOdooEntries" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" data-backdrop="static" data-keyboard="false">
@@ -286,15 +289,15 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     <span id="journalEntryNameDisplay" style="font-size: 11pt; color: #727070; letter-spacing: 1px;"></span>
                 </h5>
                 <!-- <h5>Edit the date range</h5> -->
-            <div id="filterSection"  style="text-align:right; margin-left:auto;">
-                <label id="fromDateLabel">From:</label>
-                <input type="date" id="fromDate" style="border: none;" disabled>
-                <label id="toDateLabel">To:</label>
-                <input type="date" id="toDate" style="border: none;" disabled>
-                <button id="filterBtn" class="btn btn-success" style="display:none;">Apply</button>
-                <!-- <button id="editDateRange" class="btn-primary">Edit</button> -->
+                <div id="filterSection" style="text-align:right; margin-left:auto;">
+                    <label id="fromDateLabel">From:</label>
+                    <input type="date" id="fromDate" style="border: none;" disabled>
+                    <label id="toDateLabel">To:</label>
+                    <input type="date" id="toDate" style="border: none;" disabled>
+                    <button id="filterBtn" class="btn btn-success" style="display:none;">Apply</button>
+                    <!-- <button id="editDateRange" class="btn-primary">Edit</button> -->
+                </div>
             </div>
-        </div>
             <div class="modal-body">
 
                 <div id="distributionSection">
@@ -315,14 +318,14 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             COGS Reverse
                         </button>
                     </div> -->
-                            <div class="btness"  style="display: none;">
-                                 <button class="btn btn-success" id="saveCustom">SAVE ADDED SBU</button>
-                            </div>
+                    <div class="btness" style="display: none;">
+                        <button class="btn btn-success" id="saveCustom">SAVE ADDED SBU</button>
+                    </div>
                     <div style="padding-top:40px;">
                         <!-- <div id="distributionEntriesContainer" style="display:none;"> -->
 
                         <!-- </div> -->
-                          <table id="distributionEntriesTbl" class="table table-bordered table-striped" style="width:100%; color: #000000;">
+                        <table id="distributionEntriesTbl" class="table table-bordered table-striped" style="width:100%; color: #000000;">
                             <thead>
                                 <tr>
                                     <!-- <th></th> -->
@@ -337,22 +340,22 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                 </tr>
                             </thead>
                             <tbody></tbody>
-                          <tfoot>
-                            <tr>
-                                <td colspan="2" style="text-align:right; font-weight:bold;">Total:</td>
-                                <td id="distributionTotalDebit" style="font-weight:bold;"></td>
-                                <td id="distributionTotalCredit" style="font-weight:bold;"></td>
-                                <td></td>
-                                <td></td>
-                            </tr>
-                        </tfoot>
-                            </table>
-                        </div>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="2" style="text-align:right; font-weight:bold;">Total:</td>
+                                    <td id="distributionTotalDebit" style="font-weight:bold;"></td>
+                                    <td id="distributionTotalCredit" style="font-weight:bold;"></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 </div>
 <!-- Modal -->
 
@@ -370,7 +373,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         reinitializeMoTbl();
         // checkRunBtnFromTable();
 
-        function reinitializeMoTbl() { 
+        function reinitializeMoTbl() {
             // if (dt.moTable) {
             //     dt.moTable.clear().draw();
             //     dt.moTable.destroy();
@@ -389,12 +392,12 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             if (dt.distributionEntriesTbl) {
                 dt.distributionEntriesTbl.clear().draw();
                 dt.distributionEntriesTbl.destroy();
-            } 
+            }
 
             dt.distributionEntriesTbl = $('#distributionEntriesTbl').DataTable({
                 destroy: true,
                 pageLength: 5,
-                processing: true, 
+                processing: true,
                 searching: true,
                 columns: [
                     // {
@@ -461,7 +464,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                 month: 'short',
                                 day: '2-digit'
                             }).format(d);
-                        } 
+                        }
                     },
                     // {
                     //     data: 'sbu',
@@ -524,7 +527,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     //         return html;
                     //     }
                     // },
-                    
+
                     // {
                     //     data: null,
                     //     render: function(data, type, row) {
@@ -541,7 +544,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     let totalDebit = 0;
                     let totalCredit = 0;
 
-                    api.rows({ search: 'applied' }).every(function() {
+                    api.rows({
+                        search: 'applied'
+                    }).every(function() {
                         let rowData = this.data();
                         totalDebit += parseFloat(rowData.debit) || 0;
                         totalCredit += parseFloat(rowData.credit) || 0;
@@ -563,199 +568,199 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 }
             });
 
-            $('#distTable').on('change', '.rowCheckbox', function () {
-            let anyChecked = $('.rowCheckbox:checked').length > 0;
+            $('#distTable').on('change', '.rowCheckbox', function() {
+                let anyChecked = $('.rowCheckbox:checked').length > 0;
 
-            if (anyChecked) {
-                // $('#sbuSelect').select2('open');
-                // $('#moSelect').select2('open');
-                $('#sbuContainer').slideDown();
-            } else {
-                // $('#sbuSelect').hide();
-                //  $('#moSelect').hide();
-                $('#sbuContainer').hide();
-            }
+                if (anyChecked) {
+                    // $('#sbuSelect').select2('open');
+                    // $('#moSelect').select2('open');
+                    $('#sbuContainer').slideDown();
+                } else {
+                    // $('#sbuSelect').hide();
+                    //  $('#moSelect').hide();
+                    $('#sbuContainer').hide();
+                }
 
-        });
+            });
 
-        // $('.selectSbu').on('click', function () {
-        //     $('#sbuContainer').slideDown();
+            // $('.selectSbu').on('click', function () {
+            //     $('#sbuContainer').slideDown();
 
-        //     setTimeout(() => {
-        //         $('#sbuSelect').select2('open');
-        //     }, 200);
-        // });
+            //     setTimeout(() => {
+            //         $('#sbuSelect').select2('open');
+            //     }, 200);
+            // });
 
         }
 
-            $('#sbuSelect').select2({
-                placeholder: "Select SBU",
-                allowClear: true,
-                multiple: true,
-                width: '100%',
-                ajax: {
-                    url: 'ajax/fetch/get_sbu.php',
-                    dataType: 'json',
-                    processResults: function(data) {
-                        return {
-                            results: data
-                        };
-                    }
+        $('#sbuSelect').select2({
+            placeholder: "Select SBU",
+            allowClear: true,
+            multiple: true,
+            width: '100%',
+            ajax: {
+                url: 'ajax/fetch/get_sbu.php',
+                dataType: 'json',
+                processResults: function(data) {
+                    return {
+                        results: data
+                    };
                 }
-            });
-            
+            }
+        });
 
-            // $('.selectSbu').on('click', function () {
-            //     $('#sbuContainer').slideToggle();
-            // });
 
-            //     $('#moSelect').select2({
-            //     placeholder: "Select MO Disttribution",
-            //     allowClear: true,
-            //     multiple: true,
-            //     width: '100%'
-            //     // ajax: {
-            //     //     url: 'ajax/fetch/get_sbu.php',
-            //     //     dataType: 'json',
-            //     //     processResults: function(data) {
-            //     //         return {
-            //     //             results: data
-            //     //         };
-            //     //     }
-            //     // }
-            // });
+        // $('.selectSbu').on('click', function () {
+        //     $('#sbuContainer').slideToggle();
+        // });
 
-            // $('#moSelect').select2({
-            //     placeholder: "Select MO Distribution",
-            //     allowClear: true,
-            //     multiple: false,
-            //     width: '100%'
-            // });  
+        //     $('#moSelect').select2({
+        //     placeholder: "Select MO Disttribution",
+        //     allowClear: true,
+        //     multiple: true,
+        //     width: '100%'
+        //     // ajax: {
+        //     //     url: 'ajax/fetch/get_sbu.php',
+        //     //     dataType: 'json',
+        //     //     processResults: function(data) {
+        //     //         return {
+        //     //             results: data
+        //     //         };
+        //     //     }
+        //     // }
+        // });
 
-            // $('#moSelect').append(new Option('', '', true, true)); 
-            // $('#moSelect').append(new Option('MO Earned Hours', 'MO Earned Hours', false, false));
-            // $('#moSelect').append(new Option('MO Quantity', 'MO Quantity', false, false));
-            // $('#moSelect').trigger('change'); 
+        // $('#moSelect').select2({
+        //     placeholder: "Select MO Distribution",
+        //     allowClear: true,
+        //     multiple: false,
+        //     width: '100%'
+        // });  
 
-            let moDistList = [];
+        // $('#moSelect').append(new Option('', '', true, true)); 
+        // $('#moSelect').append(new Option('MO Earned Hours', 'MO Earned Hours', false, false));
+        // $('#moSelect').append(new Option('MO Quantity', 'MO Quantity', false, false));
+        // $('#moSelect').trigger('change'); 
 
-            $.getJSON('ajax/json/mo_distribution.json', function (data) {
-                moDistList = data;
+        let moDistList = [];
 
-                let $mo = $('#moSelect');
-                $mo.empty();
+        $.getJSON('ajax/json/mo_distribution.json', function(data) {
+            moDistList = data;
 
-                $mo.append(new Option('', '', true, true));
+            let $mo = $('#moSelect');
+            $mo.empty();
 
-                moDistList.forEach(item => {
-                    $mo.append(new Option(item.name, item.value, false, false));
-                });
+            $mo.append(new Option('', '', true, true));
 
-                $mo.select2({
-                    placeholder: "Select MO Distribution",
-                    allowClear: true,
-                    multiple: false,
-                    width: '100%'
-                });
-
-                $mo.val(null).trigger('change'); 
+            moDistList.forEach(item => {
+                $mo.append(new Option(item.name, item.value, false, false));
             });
 
-            // $('.moSelect').on('click', function () {
-            //     $('#sbuContainer').slideToggle();
-            // });
+            $mo.select2({
+                placeholder: "Select MO Distribution",
+                allowClear: true,
+                multiple: false,
+                width: '100%'
+            });
 
-            // $('#sbuSelect').on('change', function () {
-            //     let selected = $(this).val();
+            $mo.val(null).trigger('change');
+        });
 
-            //     if (selected && selected.length > 0) {
-            //         $('#applySbuBtn').show();
-            //     } else {
-            //         $('#applySbuBtn').hide();
-            //     }
-            // });
+        // $('.moSelect').on('click', function () {
+        //     $('#sbuContainer').slideToggle();
+        // });
 
-            // $('#applySbuBtn').on('click', function () { 
-            //     let selectedSbus = $('#sbuSelect').select2('data');
-                
+        // $('#sbuSelect').on('change', function () {
+        //     let selected = $(this).val();
 
-            //     if (!selectedSbus.length) {
-            //         swal("Warning", "Please select at least one SBU.", "warning");
-            //         return;
-            //     }
+        //     if (selected && selected.length > 0) {
+        //         $('#applySbuBtn').show();
+        //     } else {
+        //         $('#applySbuBtn').hide();
+        //     }
+        // });
 
-            //     let checkedBoxes = dt.distTable.$('.rowCheckbox:checked');
+        // $('#applySbuBtn').on('click', function () { 
+        //     let selectedSbus = $('#sbuSelect').select2('data');
 
-            //     if (checkedBoxes.length === 0) {
-            //         swal("Warning", "Please select at least one row.", "warning");
-            //         return;
-            //     }
 
-            //     checkedBoxes.each(function () {
-            //         let tr = $(this).closest('tr');
-            //         let row = dt.distTable.row(tr);
-            //         let rowData = row.data();
+        //     if (!selectedSbus.length) {
+        //         swal("Warning", "Please select at least one SBU.", "warning");
+        //         return;
+        //     }
 
-            //         rowData.sbu = normalizeStringArray(rowData.sbu);
-            //         rowData.sbu_ids = normalizeIntArray(rowData.sbu_ids);
+        //     let checkedBoxes = dt.distTable.$('.rowCheckbox:checked');
 
-            //         selectedSbus.forEach(function (item) {
-            //             let sbuText = String(item.text).trim();
-            //             let sbuId = parseInt(item.id, 10);
+        //     if (checkedBoxes.length === 0) {
+        //         swal("Warning", "Please select at least one row.", "warning");
+        //         return;
+        //     }
 
-            //             let alreadyExistsById = rowData.sbu_ids.includes(sbuId);
-            //             let alreadyExistsByText = rowData.sbu.includes(sbuText);
+        //     checkedBoxes.each(function () {
+        //         let tr = $(this).closest('tr');
+        //         let row = dt.distTable.row(tr);
+        //         let rowData = row.data();
 
-            //             if (!alreadyExistsById && !alreadyExistsByText) {
-            //                 rowData.sbu.push(sbuText);
-            //                 rowData.sbu_ids.push(sbuId);
-            //             }
-            //         });
+        //         rowData.sbu = normalizeStringArray(rowData.sbu);
+        //         rowData.sbu_ids = normalizeIntArray(rowData.sbu_ids);
 
-            //         row.data(rowData).invalidate();
-            //     });
+        //         selectedSbus.forEach(function (item) {
+        //             let sbuText = String(item.text).trim();
+        //             let sbuId = parseInt(item.id, 10);
 
-            //     dt.distTable.draw(false);
+        //             let alreadyExistsById = rowData.sbu_ids.includes(sbuId);
+        //             let alreadyExistsByText = rowData.sbu.includes(sbuText);
 
-            //     swal("Success", "SBU added to selected row(s).", "success");
+        //             if (!alreadyExistsById && !alreadyExistsByText) {
+        //                 rowData.sbu.push(sbuText);
+        //                 rowData.sbu_ids.push(sbuId);
+        //             }
+        //         });
 
-            //     toggleSaveButton();
-            //     $('#sbuSelect').val(null).trigger('change');
-            //     $('#applySbuBtn').hide();
-            //     $('#sbuContainer').slideUp();
-            //     $('.selectSbu').hide();
-            //     $('#saveCustom').show();
-            // });
+        //         row.data(rowData).invalidate();
+        //     });
 
-            // $('#distributionEntriesTbl tbody').on('click', '.removeSbu', function (e) {
-            //     e.stopPropagation();
+        //     dt.distTable.draw(false);
 
-            //     let sbuToRemove = $(this).data('sbu');
-            //     let tr = $(this).closest('tr');
-            //     let row = dt.distributionEntriesTbl.row(tr);
-            //     let rowData = row.data();
+        //     swal("Success", "SBU added to selected row(s).", "success");
 
-            //     swal({
-            //         title: "Remove SBU?",
-            //         text: `Remove ${sbuToRemove}?`,
-            //         type: "warning",
-            //         showCancelButton: true,
-            //         confirmButtonColor: "#DD6B55",
-            //         confirmButtonText: "Yes"
-            //     }, function (isConfirm) {
+        //     toggleSaveButton();
+        //     $('#sbuSelect').val(null).trigger('change');
+        //     $('#applySbuBtn').hide();
+        //     $('#sbuContainer').slideUp();
+        //     $('.selectSbu').hide();
+        //     $('#saveCustom').show();
+        // });
 
-            //         if (isConfirm) {
+        // $('#distributionEntriesTbl tbody').on('click', '.removeSbu', function (e) {
+        //     e.stopPropagation();
 
-            //             rowData.sbu = rowData.sbu.filter(s => s !== sbuToRemove);
+        //     let sbuToRemove = $(this).data('sbu');
+        //     let tr = $(this).closest('tr');
+        //     let row = dt.distributionEntriesTbl.row(tr);
+        //     let rowData = row.data();
 
-            //             row.data(rowData).draw(false);
-            //             toggleSaveButton();
+        //     swal({
+        //         title: "Remove SBU?",
+        //         text: `Remove ${sbuToRemove}?`,
+        //         type: "warning",
+        //         showCancelButton: true,
+        //         confirmButtonColor: "#DD6B55",
+        //         confirmButtonText: "Yes"
+        //     }, function (isConfirm) {
 
-            //             swal("Removed!", "SBU removed.", "success");
-            //         } 
+        //         if (isConfirm) {
 
-            //     });
-            // });
+        //             rowData.sbu = rowData.sbu.filter(s => s !== sbuToRemove);
+
+        //             row.data(rowData).draw(false);
+        //             toggleSaveButton();
+
+        //             swal("Removed!", "SBU removed.", "success");
+        //         } 
+
+        //     });
+        // });
 
         //   $('#distributionEntriesTbl tbody').on('click', '.removeSbu', function () {
         //     let sbuIdToRemove = parseInt($(this).data('id'));
@@ -820,26 +825,26 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         //     });
         // });
 
-             function toggleSaveButton() {
-             let hasSbu = false;
+        function toggleSaveButton() {
+            let hasSbu = false;
 
-                dt.distributionEntriesTbl.rows().every(function () {
-                    let rowData = this.data();
+            dt.distributionEntriesTbl.rows().every(function() {
+                let rowData = this.data();
 
-                    if (rowData.sbu && rowData.sbu.length > 0) {
-                        hasSbu = true;
-                        return false;
-                    }
-                });
-
-                if (hasSbu) {
-                    $('.btness').show();
-                } else {
-                    $('.btness').hide();
+                if (rowData.sbu && rowData.sbu.length > 0) {
+                    hasSbu = true;
+                    return false;
                 }
-            }
+            });
 
-          $('#saveCustom').on('click', function () {
+            if (hasSbu) {
+                $('.btness').show();
+            } else {
+                $('.btness').hide();
+            }
+        }
+
+        $('#saveCustom').on('click', function() {
             let moveId = $('#myModalOdooEntries').data('id');
             // console.log(moveId);
 
@@ -850,7 +855,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
             let selectedLines = [];
 
-            dt.distributionEntriesTbl.rows().every(function () {
+            dt.distributionEntriesTbl.rows().every(function() {
                 let rowData = this.data();
                 // console.log('rowData:', rowData);
 
@@ -882,8 +887,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 data: JSON.stringify({
                     move_id: moveId,
                     rows: selectedLines
-                }), 
-                success: function (response) {
+                }),
+                success: function(response) {
                     if (response.status === 'success') {
                         swal("Success", response.message, "success");
                         $('#saveCustom').hide();
@@ -891,19 +896,19 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         swal("Error", response.message, "error");
                     }
                 },
-                error: function (xhr) {
+                error: function(xhr) {
                     console.log(xhr.responseText);
                     swal("Error", "Failed to save distribution lines.", "error");
                 }
             });
         });
-        
 
-        $('#editDateRange').on('click', function () {
+
+        $('#editDateRange').on('click', function() {
             $('#fromDate, #toDate').prop('disabled', false);
 
             $('#filterBtn').show();
-            $(this).hide(); 
+            $(this).hide();
         });
 
         function formatDate(dateStr) {
@@ -918,194 +923,194 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             }).format(d);
         }
 
-            $('#filterBtn').on('click', function () {
-                let fromDate = $('#fromDate').val(); 
-                let toDate = $('#toDate').val();
-                let moveId = $('#myModalOdooEntries').data('id');
-                let totalAmounts = $('#myModalOdooEntries').data('total-amount');
-                let accountingDate = $('#myModalOdooEntries').data('accounting-date');
-                // console.log(totalAmounts);
+        $('#filterBtn').on('click', function() {
+            let fromDate = $('#fromDate').val();
+            let toDate = $('#toDate').val();
+            let moveId = $('#myModalOdooEntries').data('id');
+            let totalAmounts = $('#myModalOdooEntries').data('total-amount');
+            let accountingDate = $('#myModalOdooEntries').data('accounting-date');
+            // console.log(totalAmounts);
 
-                // if (!fromDate || !toDate) {
-                //     swal("Warning", "Please select both dates.", "warning");
-                //     return; 
-                // }
+            // if (!fromDate || !toDate) {
+            //     swal("Warning", "Please select both dates.", "warning");
+            //     return; 
+            // }
 
-                if (fromDate > toDate) {
-                    swal("Warning", "From date cannot be greater than To date.", "warning");
-                    return;
-                }
-
-                if (!moveId || !totalAmounts || !accountingDate) {
-                    swal("Error", "No selected journal entry.", "error");
-                    return;
-                }
-
-                let display = `${formatDate(fromDate)} - ${formatDate(toDate)}`;
-                $('#dateRangeDisplay').text(display);
-
-                $.ajax({
-                    url: 'ajax/transaction/save_custom_distribution.php',
-                    type: 'POST',
-                    dataType: 'json',
-                    data: {
-                        move_id: moveId,
-                        from_date: fromDate,
-                        to_date: toDate, 
-                        total_amount: totalAmounts,
-                        accounting_date: accountingDate
-                    },
-                    success: function (response) {
-                        if (response.status === 'success') {
-                            dt.distributionEntriesTbl.draw(); 
-
-                            $('#fromDate, #toDate').prop('disabled', true);
-                            $('#filterBtn').hide();
-                            $('#editDateRange').show();
-                            init();
-
-                            swal("Success", "Date range saved.", "success");
-                        } else {
-                            swal("Error", response.message, "error");
-                        }
-                    },
-                    error: function () {
-                        swal("Error", "Failed to save date range.", "error");
-                    }
-                    });
-                });
-
-                function toggleMassDateRange() {
-                let checkedCount = distTable.$('.rowCheckbox:checked').length;
-
-                if (checkedCount > 0) {
-                    $('#massDateRangeSection').fadeIn();
-                } else {
-                    $('#massDateRangeSection').fadeOut();
-                    $('#massFromDate').val('');
-                    $('#massToDate').val('');
-                }
+            if (fromDate > toDate) {
+                swal("Warning", "From date cannot be greater than To date.", "warning");
+                return;
             }
 
-            $('#distTable tbody').on('change', '.rowCheckbox', function () {
-                toggleMassDateRange();
+            if (!moveId || !totalAmounts || !accountingDate) {
+                swal("Error", "No selected journal entry.", "error");
+                return;
+            }
+
+            let display = `${formatDate(fromDate)} - ${formatDate(toDate)}`;
+            $('#dateRangeDisplay').text(display);
+
+            $.ajax({
+                url: 'ajax/transaction/save_custom_distribution.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    move_id: moveId,
+                    from_date: fromDate,
+                    to_date: toDate,
+                    total_amount: totalAmounts,
+                    accounting_date: accountingDate
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        dt.distributionEntriesTbl.draw();
+
+                        $('#fromDate, #toDate').prop('disabled', true);
+                        $('#filterBtn').hide();
+                        $('#editDateRange').show();
+                        init();
+
+                        swal("Success", "Date range saved.", "success");
+                    } else {
+                        swal("Error", response.message, "error");
+                    }
+                },
+                error: function() {
+                    swal("Error", "Failed to save date range.", "error");
+                }
+            });
+        });
+
+        function toggleMassDateRange() {
+            let checkedCount = distTable.$('.rowCheckbox:checked').length;
+
+            if (checkedCount > 0) {
+                $('#massDateRangeSection').fadeIn();
+            } else {
+                $('#massDateRangeSection').fadeOut();
+                $('#massFromDate').val('');
+                $('#massToDate').val('');
+            }
+        }
+
+        $('#distTable tbody').on('change', '.rowCheckbox', function() {
+            toggleMassDateRange();
+        });
+
+        // MASS UPDATE SA MGA SELECTED DATE RANGE
+        $('#filterBtnMass').on('click', function() {
+            let fromDate = $('#massFromDate').val();
+            let toDate = $('#massToDate').val();
+
+            let selectedSbus = $('#sbuSelect').select2('data');
+            let selectedMoDist = $('#moSelect').val() || '';
+
+            let hasDateRange = fromDate !== '' || toDate !== '';
+            let hasSbu = selectedSbus.length > 0;
+            let hasMoDist = selectedMoDist !== '';
+
+            if (!hasDateRange && !hasSbu && !hasMoDist) {
+                swal("Warning", "Please select date range, SBU, or MO Distribution.", "warning");
+                return;
+            }
+
+            if (hasDateRange && (!fromDate || !toDate)) {
+                swal("Warning", "Please select both From Date and To Date.", "warning");
+                return;
+            }
+
+            if (hasDateRange && fromDate > toDate) {
+                swal("Warning", "From date cannot be greater than To date.", "warning");
+                return;
+            }
+
+            let checkedBoxes = distTable.$('.rowCheckbox:checked');
+
+            if (checkedBoxes.length === 0) {
+                swal("Warning", "No selected rows.", "warning");
+                return;
+            }
+
+            let selectedMass = [];
+
+            checkedBoxes.each(function() {
+                let tr = $(this).closest('tr');
+                let row = distTable.row(tr);
+                let rowData = row.data();
+
+                if (hasDateRange) {
+                    rowData.from_date = fromDate;
+                    rowData.to_date = toDate;
+                }
+
+                rowData.sbu = normalizeStringArray(rowData.sbu);
+                rowData.sbu_ids = normalizeIntArray(rowData.sbu_ids);
+
+                if (hasSbu) {
+                    selectedSbus.forEach(function(item) {
+                        let sbuText = String(item.text).trim();
+                        let sbuId = parseInt(item.id, 10);
+
+                        if (!rowData.sbu_ids.includes(sbuId) && !rowData.sbu.includes(sbuText)) {
+                            rowData.sbu.push(sbuText);
+                            rowData.sbu_ids.push(sbuId);
+                        }
+                    });
+                }
+
+                if (hasMoDist) {
+                    rowData.mo_dist = selectedMoDist;
+                }
+
+                row.data(rowData).invalidate();
+
+                selectedMass.push({
+                    move_id: rowData.am_id,
+                    move_line_id: rowData.aml_id,
+                    total_amount: rowData.amount_total,
+                    accounting_date: rowData.accounting_date,
+
+                    from_date: hasDateRange ? fromDate : null,
+                    to_date: hasDateRange ? toDate : null,
+                    sbu: hasSbu ? rowData.sbu_ids : null,
+                    mo_dist: hasMoDist ? selectedMoDist : null
+                });
             });
 
-            // MASS UPDATE SA MGA SELECTED DATE RANGE
-            $('#filterBtnMass').on('click', function () { 
-                let fromDate = $('#massFromDate').val();
-                let toDate   = $('#massToDate').val();
+            distTable.draw(false);
+            // checkRunBtnFromTable();
 
-                let selectedSbus = $('#sbuSelect').select2('data');
-                let selectedMoDist = $('#moSelect').val() || '';
+            $.ajax({
+                url: 'ajax/transaction/save_mass_custom_distribution.php',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    rows: selectedMass
+                }),
+                success: function(res) {
+                    if (res.status === 'success') {
+                        swal("Success", "Changes applied and saved.", "success");
 
-                let hasDateRange = fromDate !== '' || toDate !== '';
-                let hasSbu = selectedSbus.length > 0;
-                let hasMoDist = selectedMoDist !== '';
+                        $('#massDateRangeSection').hide();
+                        $('#massFromDate').val('');
+                        $('#massToDate').val('');
+                        $('#sbuSelect').val(null).trigger('change');
+                        $('#moSelect').val(null).trigger('change');
 
-                if (!hasDateRange && !hasSbu && !hasMoDist) {
-                    swal("Warning", "Please select date range, SBU, or MO Distribution.", "warning");
-                    return;
-                }
-
-                if (hasDateRange && (!fromDate || !toDate)) {
-                    swal("Warning", "Please select both From Date and To Date.", "warning");
-                    return;
-                }
-
-                if (hasDateRange && fromDate > toDate) {
-                    swal("Warning", "From date cannot be greater than To date.", "warning");
-                    return;
-                }
-
-                let checkedBoxes = distTable.$('.rowCheckbox:checked');
-
-                if (checkedBoxes.length === 0) {
-                    swal("Warning", "No selected rows.", "warning");
-                    return;
-                }
-
-                let selectedMass = [];
-
-                checkedBoxes.each(function () {
-                    let tr = $(this).closest('tr');
-                    let row = distTable.row(tr); 
-                    let rowData = row.data();
-
-                    if (hasDateRange) {
-                        rowData.from_date = fromDate;
-                        rowData.to_date = toDate;
+                        distTable.$('.rowCheckbox').prop('checked', false);
+                        init();
+                    } else {
+                        swal("Error", res.message || "Failed to save.", "error");
                     }
+                },
+                error: function(xhr) {
+                    console.log(xhr.responseText);
+                    swal("Error", "Server error while saving.", "error");
+                }
+            });
+        }); // END
 
-                    rowData.sbu = normalizeStringArray(rowData.sbu);
-                    rowData.sbu_ids = normalizeIntArray(rowData.sbu_ids);
-
-                    if (hasSbu) {
-                        selectedSbus.forEach(function (item) {
-                            let sbuText = String(item.text).trim();
-                            let sbuId = parseInt(item.id, 10);
-
-                            if (!rowData.sbu_ids.includes(sbuId) && !rowData.sbu.includes(sbuText)) {
-                                rowData.sbu.push(sbuText);
-                                rowData.sbu_ids.push(sbuId);
-                            }
-                        });
-                    }
-
-                    if (hasMoDist) {
-                        rowData.mo_dist = selectedMoDist;
-                    }
-
-                    row.data(rowData).invalidate();
-
-                    selectedMass.push({
-                        move_id: rowData.am_id,
-                        move_line_id: rowData.aml_id, 
-                        total_amount: rowData.amount_total,
-                        accounting_date: rowData.accounting_date,
-
-                        from_date: hasDateRange ? fromDate : null,
-                        to_date: hasDateRange ? toDate : null,
-                        sbu: hasSbu ? rowData.sbu_ids : null,
-                        mo_dist: hasMoDist ? selectedMoDist : null
-                    });
-                });
-
-                distTable.draw(false);
-                // checkRunBtnFromTable();
-
-                $.ajax({
-                    url: 'ajax/transaction/save_mass_custom_distribution.php',
-                    type: 'POST',
-                    dataType: 'json',
-                    contentType: 'application/json',
-                    data: JSON.stringify({
-                        rows: selectedMass
-                    }),
-                    success: function (res) {
-                        if (res.status === 'success') {
-                            swal("Success", "Changes applied and saved.", "success");
-
-                            $('#massDateRangeSection').hide();
-                            $('#massFromDate').val('');
-                            $('#massToDate').val('');
-                            $('#sbuSelect').val(null).trigger('change');
-                            $('#moSelect').val(null).trigger('change');
-
-                            distTable.$('.rowCheckbox').prop('checked', false);
-                            init();
-                        } else {
-                            swal("Error", res.message || "Failed to save.", "error");
-                        }
-                    },
-                    error: function (xhr) {
-                        console.log(xhr.responseText);
-                        swal("Error", "Server error while saving.", "error");
-                    }
-                });
-            }); // END
-
-        async function init() { 
+        async function init() {
             try {
                 if ($('#yearMonthSelect').val() == '') {
                     curr_month_year = getCurrentMonthYear();
@@ -1201,83 +1206,88 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         //     }
         // });
 
-            // Added by Ivan - to check kung may setup
-            // function checkRunBtnFromTable() {
-            //     let hasData = false; 
-                
-            //     distTable.rows().every(function () {
-            //         let rowData = this.data();
-            //         // console.log(rowData, 'dwqd')
+        // Added by Ivan - to check kung may setup
+        // function checkRunBtnFromTable() {
+        //     let hasData = false; 
 
-            //         let hasDate = rowData.from_date && rowData.to_date;
-            //         let hasSbu = rowData.sbu_ids && rowData.sbu_ids.length > 0;
-            //         let hasMo = rowData.mo_dist && rowData.mo_dist !== '';
-            
-            //         if (hasDate || hasSbu || hasMo) {
-            //             hasData = true;s
-            //             return false;
-            //         }
-            //     });
+        //     distTable.rows().every(function () {
+        //         let rowData = this.data();
+        //         // console.log(rowData, 'dwqd')
 
-            //     $('#runBtnDist').prop('disabled', !hasData);
+        //         let hasDate = rowData.from_date && rowData.to_date;
+        //         let hasSbu = rowData.sbu_ids && rowData.sbu_ids.length > 0;
+        //         let hasMo = rowData.mo_dist && rowData.mo_dist !== '';
 
-            //     return hasData;
-            // }
-            //     function checkRunBtnState() {
-                    
-            //     // let fromDate = $('#massFromDate').val();
-            //     // let toDate   = $('#massToDate').val();
+        //         if (hasDate || hasSbu || hasMo) {
+        //             hasData = true;s
+        //             return false;
+        //         }
+        //     });
 
-            //     // let sbu = $('#sbuSelect').val() || [];
-            //     // let mo  = $('#moSelect').val() || '';
+        //     $('#runBtnDist').prop('disabled', !hasData);
 
-            //     let hasDateRange = fromDate && toDate;
-            //     let hasSbu = sbu.length > 0;
-            //     let hasMo = mo !== '';
+        //     return hasData;
+        // }
+        //     function checkRunBtnState() {
 
-            //     if (hasDateRange || hasSbu || hasMo) {
-            //         $('#runBtnDist').prop('disabled', false);
-            //     } else {
-            //         $('#runBtnDist').prop('disabled', true);
-            //     }
-            // }
+        //     // let fromDate = $('#massFromDate').val();
+        //     // let toDate   = $('#massToDate').val();
 
-            // $('#massFromDate, #massToDate').on('change', checkRunBtnState);
+        //     // let sbu = $('#sbuSelect').val() || [];
+        //     // let mo  = $('#moSelect').val() || '';
 
-            // $('#sbuSelect').on('change', checkRunBtnState);
+        //     let hasDateRange = fromDate && toDate;
+        //     let hasSbu = sbu.length > 0;
+        //     let hasMo = mo !== '';
 
-            // $('#moSelect').on('change', checkRunBtnState);
+        //     if (hasDateRange || hasSbu || hasMo) {
+        //         $('#runBtnDist').prop('disabled', false);
+        //     } else {
+        //         $('#runBtnDist').prop('disabled', true);
+        //     }
+        // }
 
-            $("#runBtnDist").on("click", function() {
+        // $('#massFromDate, #massToDate').on('change', checkRunBtnState);
+
+        // $('#sbuSelect').on('change', checkRunBtnState);
+
+        // $('#moSelect').on('change', checkRunBtnState);
+
+        $("#runBtnDist").on("click", function() {
 
             // if (!checkRunBtnFromTable()) {
             //     swal("Warning", "No date range, SBU, or MO Distribution found in the table.", "warning");
             //     return;
             // }
 
-            let yearMonth = '02-17-2026';
-            let month_id = 2;
+            let yearMonth = $('#yearMonthSelect').val();
+            // let month_id = 2;
 
             swal({
-                title: "Are you sure you want to generate?",
-                text: "once submitted, you cannot revert this transaction",
-                type: "warning",
-                showCancelButton: true,
-                confirmButtonColor: '#DD6B55',
-                confirmButtonText: 'Yes, I am sure!',
-                cancelButtonText: "No, cancel it!",
-                closeOnConfirm: false,
-                closeOnCancel: false  
-            },
-            function(isConfirm) {
-                if (isConfirm) {
-                    startLoading('body');
-                    swal.close();
+                    title: "Are you sure you want to generate?",
+                    text: "once submitted, you cannot revert this transaction",
+                    type: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: '#DD6B55',
+                    confirmButtonText: 'Yes, I am sure!',
+                    cancelButtonText: "No, cancel it!",
+                    closeOnConfirm: false,
+                    closeOnCancel: false
+                },
+                function(isConfirm) {
+                    if (isConfirm) {
+                        startLoading('body');
 
-                } else {
-                    swal("Saving cancelled", "", "error");
-                }
-            });
+                        $trty = getCheckedData();
+                        // console.log($trty)
+                        generateJournalEntries($trty, yearMonth);
+
+                        swal.close();
+
+                    } else {
+                        swal("Saving cancelled", "", "error");
+                    }
+                });
         });
 
         $("#distTable tbody").on("click", ".cancelBtn", function() {
@@ -1307,7 +1317,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
             const acc_id = $(this).attr('data-id');
 
-            deleteAccrual(acc_id) 
+            deleteAccrual(acc_id)
             //pandelete
         });
 
@@ -1330,7 +1340,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
         });
 
-        $('#myModalOdooEntries').on('shown.bs.modal', function() { 
+        $('#myModalOdooEntries').on('shown.bs.modal', function() {
 
             let am_id = $(this).data("id");
             let totalAmount = $(this).data("total-amount");
@@ -1340,13 +1350,13 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             // console.log("Modal shown with am_id:", am_id, "totalAmount:", totalAmount, "accountingDate:", accountingDate);
             startLoading('#myModalOdooEntries .modal-content');
             $('.btn-groups').hide();
-            $('.modal-title').hide();  
+            $('.modal-title').hide();
             // $('.status-ribbon').hide();
 
             $('#distributionEntriesContainer').show();
 
-                $('#fromDate').val(fromDate ? formatInputDate(fromDate) : '');
-                $('#toDate').val(toDate ? formatInputDate(toDate) : '');
+            $('#fromDate').val(fromDate ? formatInputDate(fromDate) : '');
+            $('#toDate').val(toDate ? formatInputDate(toDate) : '');
 
             reinitializeMoTbl();
             loadOdooEntries(am_id, totalAmount, accountingDate, fromDate, toDate);
@@ -1388,7 +1398,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         //     //         init()
         //     //     }
         //     // });
-            
+
 
         // });
 
@@ -1399,14 +1409,99 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             if (isNaN(d)) return '';
 
             let month = ('0' + (d.getMonth() + 1)).slice(-2);
-            let day   = ('0' + d.getDate()).slice(-2);
+            let day = ('0' + d.getDate()).slice(-2);
 
             return `${d.getFullYear()}-${month}-${day}`;
         }
 
+        $('#distTable tbody').on('click', '.removeSbu', function(e) {
+            e.stopPropagation();
+
+            let btn = $(this);
+            let sbuText = btn.data('sbu');
+            let sbuId = btn.data('id');
+
+            let tr = btn.closest('tr');
+            let row = distTable.row(tr);
+
+            swal({
+                title: "Remove SBU?",
+                text: sbuText,
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d33",
+                confirmButtonText: "Yes, remove it!"
+            }, function() {
+                removeSbuFromRow(row, sbuText, sbuId);
+            });
+        });
 
 
         ///////////////////////////////////// FUNCTION SIDE ///////////////////////////////////////////////////////////////////////////////////////////////////
+        function generateJournalEntries(cust_data, yearMonth) {
+
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/transaction/save_distributed_journal.php',
+                dataType: 'json',
+                data: {
+                    yearMonth: yearMonth,
+                    is_accrual: false,
+                    cust_data: JSON.stringify(cust_data),
+                },
+
+                success: function(response) {
+                    // console.log(response );
+                    // console.log(yearMonth)
+                    // fetchAccrual(yearMonth)
+                    // previewJournalEntries(month_id, yearMonth)
+                    // $('#previewInsertToOdoo').modal('show');
+                    // $('#previewInsertToOdoo #btnSubmitToOdoo').attr('data-id', month_id)
+
+                    stopLoading('body')
+
+                }
+            });
+        }
+
+        function getCheckedData() {
+            let data = [];
+            let hasError = false;
+
+            $('.rowCheckbox:checked').each(function() {
+                let $row = $(this).closest('tr');
+                let cd_id = $(this).data('cd-id');
+                // let selectedValue = $row.find('.avpSelect').val();
+                // let standardReverse = $row.find('.auto_insert_switch').prop('checked')
+
+                // let apvTotal = $row.find('.avpSelect option:selected').attr('data-id');
+                // let distTemplate = $row.find('.disttemplateSelect option:selected').text();
+                // let accrualTotal = $row.find('.distribution-input').val();
+
+
+                // if (selectedValue === '' && !standardReverse) {
+                //     // Show error message
+                //     alert(`Please select a value for ID ${id}`);
+                //     hasError = true;
+                //     return false; // stop the loop
+                // }
+
+                data.push({
+                    cd_id: cd_id,
+                    // accrual_total: accrualTotal,
+                    // dist_template: distTemplate,
+                    // standardReverse: standardReverse,
+                    // apv_id: standardReverse ? null : selectedValue,
+                    // apv_total: standardReverse ? null : apvTotal,
+                    action: ''
+                });
+            });
+
+            if (hasError) return false; // Stop further processing if error
+
+            return data;
+        }
+
         function getCurrentMonthYear() {
             const d = new Date();
             const year = d.getFullYear();
@@ -1524,7 +1619,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 });
         }
 
-        function initDistTable() { 
+        function initDistTable() {
             if (distTable) {
                 distTable.clear().draw();
                 distTable.destroy();
@@ -1541,16 +1636,15 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             //         });
             distTable = $("#distTable").DataTable({
                 pageLength: 5,
-                columns: [
-                    {
+                columns: [{
                         data: null,
-                            render: function(data, type, row) {
+                        render: function(data, type, row) {
                             let checkId = `perRow_${row.am_id}`;
-                                return `
-                                    <input type="checkbox" id="${checkId}" class="rowCheckbox" value="${row.am_id}">
+                            return `
+                                    <input type="checkbox" id="${checkId}" class="rowCheckbox" value="${row.am_id}"  data-cd-id="${row.cd_id}">
                                     <label for="${checkId}"></label>
                                 `;
-                        } 
+                        }
                     },
                     {
                         data: "am_id"
@@ -1575,7 +1669,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         render: function(row) {
 
                             let from = row.from_date ? formatDate(row.from_date) : '';
-                            let to   = row.to_date ? formatDate(row.to_date) : '';
+                            let to = row.to_date ? formatDate(row.to_date) : '';
                             let custId = row.cust_dist_id;
 
                             if (!from && !to) return '';
@@ -1585,50 +1679,50 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                     ${from}${from && to ? ' → ' : ''}${to}
                                 </span>
                             `;
-                        } 
+                        }
                     },
-                      {
-                         data: 'sbu',
-                         defaultContent: '',
-                         render: function(data, type, row) {
+                    {
+                        data: 'sbu',
+                        defaultContent: '',
+                        render: function(data, type, row) {
 
 
-                             let sbuArray = [];
-                             let sbuIds = [];
+                            let sbuArray = [];
+                            let sbuIds = [];
                             //  let custLineId = row.cust_line_dist_id;
-                             if (Array.isArray(data)) {
-                                 sbuArray = data;
-                             } else if (typeof data === 'string' && data !== '') {
-                                 try {
-                                     let parsed = JSON.parse(data);
-                                     sbuArray = Array.isArray(parsed) ? parsed : [];
-                                 } catch (e) {
-                                     sbuArray = String(data)
-                                         .replace(/^\{|\}$/g, '')
-                                         .split(',')
-                                         .map(x => x.trim().replace(/^"|"$/g, ''))
-                                         .filter(Boolean);
-                                 }
-                             }
-                             if (!sbuArray.length) return '';
-                             if (Array.isArray(row.sbu_ids)) {
-                                 sbuIds = row.sbu_ids;
-                             } else if (typeof row.sbu_ids === 'string' && row.sbu_ids !== '') {
-                                 try {
-                                     let parsedIds = JSON.parse(row.sbu_ids);
-                                     sbuIds = Array.isArray(parsedIds) ? parsedIds : [];
-                                 } catch (e) {
-                                     sbuIds = String(row.sbu_ids)
-                                         .replace(/^\{|\}$/g, '')
-                                         .split(',')
-                                         .map(x => x.trim().replace(/^"|"$/g, ''))
-                                         .filter(Boolean);
-                                 }
-                             }
-                             let html = '';
-                             sbuArray.forEach((sbu, index) => { 
-                                 let sbuId = sbuIds[index] ?? '';
-                                 html += `
+                            if (Array.isArray(data)) {
+                                sbuArray = data;
+                            } else if (typeof data === 'string' && data !== '') {
+                                try {
+                                    let parsed = JSON.parse(data);
+                                    sbuArray = Array.isArray(parsed) ? parsed : [];
+                                } catch (e) {
+                                    sbuArray = String(data)
+                                        .replace(/^\{|\}$/g, '')
+                                        .split(',')
+                                        .map(x => x.trim().replace(/^"|"$/g, ''))
+                                        .filter(Boolean);
+                                }
+                            }
+                            if (!sbuArray.length) return '';
+                            if (Array.isArray(row.sbu_ids)) {
+                                sbuIds = row.sbu_ids;
+                            } else if (typeof row.sbu_ids === 'string' && row.sbu_ids !== '') {
+                                try {
+                                    let parsedIds = JSON.parse(row.sbu_ids);
+                                    sbuIds = Array.isArray(parsedIds) ? parsedIds : [];
+                                } catch (e) {
+                                    sbuIds = String(row.sbu_ids)
+                                        .replace(/^\{|\}$/g, '')
+                                        .split(',')
+                                        .map(x => x.trim().replace(/^"|"$/g, ''))
+                                        .filter(Boolean);
+                                }
+                            }
+                            let html = '';
+                            sbuArray.forEach((sbu, index) => {
+                                let sbuId = sbuIds[index] ?? '';
+                                html += `
                                      <span class="sbu-badge" style="
                                          display:inline-block;
                                          background:#7C7BAD;
@@ -1647,10 +1741,10 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                                              style="margin-left:6px; cursor:pointer; font-weight:bold;">✕</span>
                                      </span>
                                  `;
-                             });
-                             return html;
-                         }
-                     },
+                            });
+                            return html;
+                        }
+                    },
                     // { 
                     //     data: 'mo_dist',
                     //     render: function(data, type, row) {
@@ -1737,7 +1831,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             });
         }
 
-        $('#distTable tbody').on('click', '.removeMoDist', function () {
+        $('#distTable tbody').on('click', '.removeMoDist', function() {
 
             let tr = $(this).closest('tr');
             let row = distTable.row(tr);
@@ -1750,7 +1844,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 showCancelButton: true,
                 confirmButtonColor: "#DD6B55",
                 confirmButtonText: "Yes"
-            }, function (isConfirm) {
+            }, function(isConfirm) {
 
                 if (!isConfirm) return;
 
@@ -1779,105 +1873,84 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         });
 
         function removeSbuFromRow(row, sbuText, sbuId) {
-                let rowData = row.data();
-                console.log(rowData, 'rowData');
+            let rowData = row.data();
+            console.log(rowData, 'rowData');
 
-                $.ajax({
-                    url: 'ajax/transaction/remove_sbu_line.php',
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({
-                        move_id: rowData.am_id,
-                        sbu_id: sbuId
-                        
-                    }),
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.status !== 'success') {
-                            swal("Error", response.message || "Failed to remove SBU.", "error");
-                            return;
-                        }
+            $.ajax({
+                url: 'ajax/transaction/remove_sbu_line.php',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    move_id: rowData.am_id,
+                    sbu_id: sbuId
 
-                        let sbuArray = []; 
-                        let sbuIds = [];
-
-                        if (Array.isArray(rowData.sbu)) {
-                            sbuArray = rowData.sbu;
-                        } else if (typeof rowData.sbu === 'string' && rowData.sbu !== '') {
-                            try {
-                                let parsedSbu = JSON.parse(rowData.sbu);
-                                sbuArray = Array.isArray(parsedSbu) ? parsedSbu : [];
-                            } catch (e) {
-                                sbuArray = String(rowData.sbu)
-                                    .replace(/^\{|\}$/g, '')
-                                    .split(',')
-                                    .map(x => x.trim().replace(/^"|"$/g, ''))
-                                    .filter(Boolean);
-                            }
-                        }
-
-                        if (Array.isArray(rowData.sbu_ids)) {
-                            sbuIds = rowData.sbu_ids;
-                        } else if (typeof rowData.sbu_ids === 'string' && rowData.sbu_ids !== '') {
-                            try {
-                                let parsedIds = JSON.parse(rowData.sbu_ids);
-                                sbuIds = Array.isArray(parsedIds) ? parsedIds : [];
-                            } catch (e) {
-                                sbuIds = String(rowData.sbu_ids)
-                                    .replace(/^\{|\}$/g, '')
-                                    .split(',')
-                                    .map(x => x.trim().replace(/^"|"$/g, ''))
-                                    .filter(Boolean);
-                            }
-                        }
-
-                        let newSbu = [];
-                        let newIds = [];
-
-                        sbuArray.forEach((sbu, index) => {
-                            let id = sbuIds[index] ?? '';
-
-                            if (parseInt(id, 10) !== parseInt(sbuId, 10)) {
-                                newSbu.push(sbu);
-                                newIds.push(id);
-                            }
-                        });
-
-                        rowData.sbu = newSbu;
-                        rowData.sbu_ids = newIds;
-
-                        row.data(rowData).invalidate().draw(false);
-
-                        // swal("Success", response.message, "success");
-                    },
-                    error: function(xhr, status, error) {
-                        swal("Error", "AJAX request failed.", "error");
-                        console.log(xhr.responseText || error);
+                }),
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status !== 'success') {
+                        swal("Error", response.message || "Failed to remove SBU.", "error");
+                        return;
                     }
-                });
-            }
-            
-            $('#distTable tbody').on('click', '.removeSbu', function(e) {
-            e.stopPropagation();
 
-                let btn = $(this);
-                let sbuText = btn.data('sbu');
-                let sbuId = btn.data('id');
+                    let sbuArray = [];
+                    let sbuIds = [];
 
-                let tr = btn.closest('tr');
-                let row = distTable.row(tr);
+                    if (Array.isArray(rowData.sbu)) {
+                        sbuArray = rowData.sbu;
+                    } else if (typeof rowData.sbu === 'string' && rowData.sbu !== '') {
+                        try {
+                            let parsedSbu = JSON.parse(rowData.sbu);
+                            sbuArray = Array.isArray(parsedSbu) ? parsedSbu : [];
+                        } catch (e) {
+                            sbuArray = String(rowData.sbu)
+                                .replace(/^\{|\}$/g, '')
+                                .split(',')
+                                .map(x => x.trim().replace(/^"|"$/g, ''))
+                                .filter(Boolean);
+                        }
+                    }
 
-                swal({
-                    title: "Remove SBU?",
-                    text: sbuText,
-                    type: "warning",
-                    showCancelButton: true,
-                    confirmButtonColor: "#d33",
-                    confirmButtonText: "Yes, remove it!"
-                }, function() {
-                    removeSbuFromRow(row, sbuText, sbuId);
-                });
+                    if (Array.isArray(rowData.sbu_ids)) {
+                        sbuIds = rowData.sbu_ids;
+                    } else if (typeof rowData.sbu_ids === 'string' && rowData.sbu_ids !== '') {
+                        try {
+                            let parsedIds = JSON.parse(rowData.sbu_ids);
+                            sbuIds = Array.isArray(parsedIds) ? parsedIds : [];
+                        } catch (e) {
+                            sbuIds = String(rowData.sbu_ids)
+                                .replace(/^\{|\}$/g, '')
+                                .split(',')
+                                .map(x => x.trim().replace(/^"|"$/g, ''))
+                                .filter(Boolean);
+                        }
+                    }
+
+                    let newSbu = [];
+                    let newIds = [];
+
+                    sbuArray.forEach((sbu, index) => {
+                        let id = sbuIds[index] ?? '';
+
+                        if (parseInt(id, 10) !== parseInt(sbuId, 10)) {
+                            newSbu.push(sbu);
+                            newIds.push(id);
+                        }
+                    });
+
+                    rowData.sbu = newSbu;
+                    rowData.sbu_ids = newIds;
+
+                    row.data(rowData).invalidate().draw(false);
+
+                    // swal("Success", response.message, "success");
+                },
+                error: function(xhr, status, error) {
+                    swal("Error", "AJAX request failed.", "error");
+                    console.log(xhr.responseText || error);
+                }
             });
+        }
+
 
 
         function startLoading(selector) {
@@ -1893,45 +1966,45 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         }
 
         function normalizeArray(value) {
-        if (Array.isArray(value)) {
-            return value;
-        }
+            if (Array.isArray(value)) {
+                return value;
+            }
 
-        if (value === null || value === undefined || value === '') {
+            if (value === null || value === undefined || value === '') {
+                return [];
+            }
+
+            if (typeof value === 'string') {
+                try {
+                    let parsed = JSON.parse(value);
+                    if (Array.isArray(parsed)) {
+                        return parsed;
+                    }
+                } catch (e) {}
+
+                return String(value)
+                    .replace(/^\{|\}$/g, '')
+                    .split(',')
+                    .map(x => x.trim().replace(/^"|"$/g, ''))
+                    .filter(Boolean);
+            }
+
             return [];
         }
 
-        if (typeof value === 'string') {
-            try {
-                let parsed = JSON.parse(value);
-                if (Array.isArray(parsed)) {
-                    return parsed;
-                }
-            } catch (e) {}
-
-            return String(value)
-                .replace(/^\{|\}$/g, '')
-                .split(',')
-                .map(x => x.trim().replace(/^"|"$/g, ''))
-                .filter(Boolean);
+        function normalizeStringArray(value) {
+            return normalizeArray(value).map(function(x) {
+                return String(x).trim();
+            }).filter(Boolean);
         }
 
-        return [];
-    }
-
-    function normalizeStringArray(value) {
-        return normalizeArray(value).map(function(x) {
-            return String(x).trim();
-        }).filter(Boolean);
-    }
-
-    function normalizeIntArray(value) {
-        return normalizeArray(value).map(function(x) {
-            return parseInt(x, 10);
-        }).filter(function(x) {
-            return !isNaN(x);
-        });
-    }
+        function normalizeIntArray(value) {
+            return normalizeArray(value).map(function(x) {
+                return parseInt(x, 10);
+            }).filter(function(x) {
+                return !isNaN(x);
+            });
+        }
 
     });
 </script>

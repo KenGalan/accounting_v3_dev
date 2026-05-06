@@ -2015,5 +2015,27 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
         // deptGroupTable.columns.adjust().draw(false);
     });
 
+    // Added by Ivan - para mabuksan yung category galing dashboard
+    $(document).ready(function () {
+    const params = new URLSearchParams(window.location.search);
+    const categoryId = params.get('category_id');
+    console.log('dqwdw', categoryId);
+
+    if (categoryId) {
+
+        setTimeout(function () {
+
+            let btn = $('.viewBtn[data-id="' + categoryId + '"]');
+
+            if (btn.length) {
+                btn.trigger('click');
+            } else {
+                console.warn('viewBtn not found for category_id:', categoryId);
+            }
+
+        }, 100); 
+    }
+}); // END
+
     </script>
 </body>

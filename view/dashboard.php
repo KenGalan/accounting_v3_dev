@@ -66,6 +66,7 @@
 
     .count-card:hover {
         transform: translateY(-4px);
+        border: 1px solid #7C7BAD;
     }
 
     .count-title {
@@ -255,36 +256,54 @@
         stroke-width: 3;
     }
 
-    .circle-progress .progress {
+    /* .circle-progress .progress {
         fill: none;
         stroke-width: 3;
         stroke-linecap: round;
         transform: rotate(-90deg);
         transform-origin: center;
+    } */
+
+    .circle-progress .progress {
+        fill: none;
+        stroke-width: 3;
+        stroke-linecap: round;
+        animation: circleProgress 1.8s ease-out;
     }
 
-    .circle-progress text {
-        font-size: 7px;
-        fill: #333;
-        font-weight: bold;
+    @keyframes circleProgress {
+        from {
+            stroke-dasharray: 0 100;
+        }
     }
+        .circle-progress text {
+            font-size: 7px;
+            fill: #333;
+            font-weight: bold;
+        }
 
     .fit-col {
         width: 1%;
         white-space: nowrap;
         text-align: center;
     }
-
     .row-danger {
-        background: #ff5b5b !important;
+        /* background: linear-gradient(90deg, #ffebeb, #ffd6d6) !important; */
+        background: linear-gradient(90deg, #ffd6d6, #ffc2c2) !important;
+        border-left: 5px solid #e53935;
+        color: #b71c1c;
+        transition: all 0.2s ease;
     }
+    .sweet-alert .icon {
+    display: none !important;
+}
 </style>
 
 
 
 <div class="count-wrapper">
 
-    <div class="count-card" id="open-card">
+    <div class="count-card" id="open-card" data-type="inc_setup">
         <div class="icon">
             <svg viewBox="0 0 24 24" width="48" height="48">
 
@@ -304,7 +323,7 @@
         <div class="count-value" id="countIncSetup">0</div>
 
     </div>
-    <div class="count-card" id="open-card">
+    <div class="count-card" id="active-card" data-type="active_acc">
         <div class="icon">
             <svg viewBox="0 0 24 24" width="48" height="48">
 
@@ -325,7 +344,7 @@
 
     </div>
 
-    <div class="count-card" id="progress-card">
+    <div class="count-card" id="progress-card" data-type="pending_prev">
         <div class="icon">
 
             <svg viewBox="0 0 24 24" width="48" height="48">
@@ -349,7 +368,7 @@
         <div class="count-value" id="countPendingRev">0</div>
     </div>
 
-    <div class="count-card" id="validation-card">
+    <div class="count-card" id="validation-card" data-type="unprocessed_temp">
         <div class="icon icon-validate">
             <svg viewBox="0 0 24 24" width="48" height="48">
 
@@ -493,27 +512,60 @@
                 // },
                 {
                     data: null,
-                    render: function(row) {
-                        return `
-                            <div class="circle-progress progress-click"
-                                data-category-id="${row.act_id}"
-                                style="cursor:pointer;">
-                                <svg viewBox="0 0 36 36">
-                                    <path class="bg"
-                                        d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 1 1 0 -31" />
+                    // render: function(row) {
+                    //     return `
+                    //         <div class="circle-progress progress-click"
+                    //             data-category-id="${row.act_id}"
+                    //             style="cursor:pointer;">
+                    //             <svg viewBox="0 0 36 36">
+                    //                 <path class="bg"
+                    //                     d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 1 1 0 -31" />
 
-                                    <path class="progress"
-                                        stroke="${getProgressColor(row.acc_categ_percentage)}"
-                                        stroke-dasharray="${row.acc_categ_percentage}, 100"
-                                        d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 1 1 0 -31" />
+                    //                 <path class="progress"
+                    //                     stroke="${getProgressColor(row.acc_categ_percentage)}"
+                    //                     stroke-dasharray="${row.acc_categ_percentage}, 100"
+                    //                     d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 1 1 0 -31" />
 
-                                    <text x="18" y="20.5" text-anchor="middle">
-                                        ${row.acc_categ_percentage}%
-                                    </text>
-                                </svg>
-                            </div>
-                        `;
-                    }
+                    //                 <text x="18" y="20.5" text-anchor="middle">
+                    //                     ${row.acc_categ_percentage}%
+                    //                 </text>
+                    //             </svg>
+                    //         </div>
+                    //     `;
+                    // }
+                 render: function(data, type, row) {
+                let percent = parseFloat(row.acc_categ_percentage) || 0;
+
+                let progressPath = '';
+
+                if (percent > 0) {
+                    progressPath = `
+                        <path class="progress"
+                            pathLength="100"
+                            stroke="${getProgressColor(percent)}"
+                            stroke-dasharray="${percent} 100"
+                            d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 1 1 0 -31" />
+                    `;
+                }
+
+                return `
+                    <div class="circle-progress progress-click"
+                        data-category-id="${row.act_id}"
+                        style="cursor:pointer;">
+                        <svg viewBox="0 0 36 36">
+                            <path class="bg"
+                                pathLength="100"
+                                d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 1 1 0 -31" />
+
+                            ${progressPath}
+
+                            <text x="18" y="20.5" text-anchor="middle">
+                                ${percent}%
+                            </text>
+                        </svg>
+                    </div>
+                `;
+                }
                 },
                 {
                     data: null,
@@ -524,6 +576,8 @@
                         if (row.active_accruals != 0) {
                             active_entries += `
                                             <span class="dblock" style="
+                                            color: white;
+                                            font-weight:550;
                                                 padding:0.3rem 1rem;
                                                 background:#4cbb51;
                                         
@@ -595,7 +649,7 @@
                 },
                 success: function(res) {
 
-                    if (!res || res.length === 0) {
+                    if (!res || res.length === 0) { 
                         swal({
                             title: 'No Data',
                             text: 'No distribution found.',
@@ -612,24 +666,31 @@
                     }
 
                     let html = `
+                        <div style="max-height: 450px; overflow-y: auto;">
                             <table class="table table-bordered table-sm">
-                                <thead>
+                                <thead style="position: sticky; top: 0; background: #fff; z-index: 1;">
                                     <tr>
                                         <th>Department</th>
                                         <th>Distribution %</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                        `;
+                    `;
 
                     res.forEach(function(row) {
                         html += `
-                                <tr>
-                                    <td>${row.dept_name || ''}</td>
-                                    <td>${row.distribution_percentage || 0}%</td>
-                                </tr>
-                            `;
+                            <tr>
+                                <td>${row.dept_name || ''}</td>
+                                <td>${row.distribution_percentage || 0}%</td>
+                            </tr>
+                        `;
                     });
+
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
 
                     html += `</tbody></table>`;
 
@@ -642,8 +703,9 @@
                         cancelButtonText: 'Close'
                     }, function(isConfirm) {
                         if (isConfirm) {
-                            window.location.href = "distribution_cost_maintenance.php"
-                        }
+                            // window.location.href = "distribution_cost_maintenance.php"
+                            window.location.href = "distribution_cost_maintenance.php?category_id=" + categoryId;
+                        } 
                     });
                 }
             });
@@ -657,36 +719,34 @@
         // });
 
         $(document).on('click', '#open-card', function() {
-            getTemplates('open');
-            nextPrev('open');
-            table.rows.add($('#templateTbl tbody tr')).draw();
-
+            getTemplates('inc_setup');
+            nextPrev('inc_setup');
             $('#resetFilter').show();
-        })
+        });
+
+        $(document).on('click', '#active-card', function() {
+            getTemplates('active_acc');
+            nextPrev('active_acc');
+            $('#resetFilter').show();
+        }); 
 
         $(document).on('click', '#progress-card', function() {
-            getTemplates('progress');
-            nextPrev('progress');
-            table.rows.add($('#templateTbl tbody tr')).draw();
-
+            getTemplates('pending_rev');
+            nextPrev('pending_rev');
             $('#resetFilter').show();
-        })
+        });
 
         $(document).on('click', '#validation-card', function() {
-            getTemplates('validation');
-            nextPrev('validation');
-            table.rows.add($('#templateTbl tbody tr')).draw();
-
+            getTemplates('unprocessed_temp');
+            nextPrev('unprocessed_temp');
             $('#resetFilter').show();
-        })
+        });
 
         $('#resetFilter').on('click', function() {
-            getTemplates();
-            nextPrev();
-            table.rows.add($('#templateTbl tbody tr')).draw();
-
+            getTemplates('');
+            nextPrev('');
             $('#resetFilter').hide();
-        })
+        });
 
         // VALIDATION
         $('#templateTbl').on('click', '.validateBtn', function() {
@@ -821,42 +881,113 @@
 
     }) // END DOCUMENT LOAD
 
-    function getTemplates(type = "") {
-        let grouped = {};
-        $.ajax({
-            url: 'ajax/fetch/fetch_all_templates.php',
-            type: 'post',
-            data: {
-                type
-            },
-            success: function(data) {
-                // $('#templateTbl tbody').html(html);
+    // Commented by Ivan
+    // function getTemplates(type = "") {
+    //     let grouped = {};
+    //     $.ajax({
+    //         url: 'ajax/fetch/fetch_all_templates.php',
+    //         type: 'post',
+    //         data: {
+    //             type
+    //         },
+    //         success: function(data) {
+    //             // $('#templateTbl tbody').html(html);
 
 
-                $('#countActiveAcc').text(data['active_acc'] || 0);
-                $('#countIncSetup').text(data['inc_setup'] || 0);
-                $('#countUnprocessed').text(data['unprocessed_temp'] || 0);
-                $('#countPendingRev').text(data['pending_rev'] || 0);
+    //             $('#countActiveAcc').text(data['active_acc'] || 0);
+    //             $('#countIncSetup').text(data['inc_setup'] || 0);
+    //             $('#countUnprocessed').text(data['unprocessed_temp'] || 0);
+    //             $('#countPendingRev').text(data['pending_rev'] || 0);
 
 
 
 
 
 
-                temp_details = data['temp_details']
-                // table.clear();
+    //             temp_details = data['temp_details'] 
+    //             // table.clear();
 
-                // temp_details.forEach(row => {
-                //     grouped[row.act_id] = row;
-                // });
-                table.clear().rows.add(temp_details).draw();
-                // table.clear().rows.add(Object.values(grouped)).draw();
-                // $('#templateTbl tbody').html(html);
-                // table.rows.add($('#templateTbl tbody tr')).draw(false);
-            }
-        })
-    }
+    //             // temp_details.forEach(row => {
+    //             //     grouped[row.act_id] = row;
+    //             // });
+    //             table.clear().rows.add(temp_details).draw();
+    //             // table.clear().rows.add(Object.values(grouped)).draw();
+    //             // $('#templateTbl tbody').html(html);
+    //             // table.rows.add($('#templateTbl tbody tr')).draw(false);
+    //         }
+    //     })
+    // } // END
 
+        function getTemplates(type = "") {
+            $.ajax({
+                url: 'ajax/fetch/fetch_all_templates.php',
+                type: 'post',
+                dataType: 'json',
+                data: {
+                    type: type
+                },
+                success: function(data) {
+
+                    $('#countActiveAcc').text(data['active_acc'] || 0);
+                    $('#countIncSetup').text(data['inc_setup'] || 0);
+                    $('#countUnprocessed').text(data['unprocessed_temp'] || 0);
+                    $('#countPendingRev').text(data['pending_rev'] || 0);
+
+                    let temp_details = data['temp_details'] || [];
+
+                    if (type === 'inc_setup') {
+                        temp_details = temp_details.filter(function(row) {
+                            let debitTo = row.debit_to || '';
+                            let percentage = parseFloat(row.acc_categ_percentage) || 0;
+
+                            return debitTo.trim() === '' || percentage !== 100;
+                        });
+                    }
+
+                    if (type === 'active_acc') {
+                        temp_details = temp_details.filter(function(row) {
+                            let activeAccruals = parseInt(row.active_accruals) || 0;
+                            let apDist = parseInt(row.ap_dist) || 0;
+
+                            return activeAccruals !== 0 || apDist !== 0;
+                        });
+                    } 
+
+                    if (type === 'unprocessed_temp') {
+                        temp_details = temp_details.filter(function(row) {
+                            let activeAccruals = parseInt(row.active_accruals) || 0;
+                            let apDist = parseInt(row.ap_dist) || 0;
+
+                            return activeAccruals === 0 && apDist === 0;
+                        });
+                    }
+
+                    if (type === 'pending_rev') {
+                            temp_details = temp_details.filter(function(row) {
+                            let activeAccruals = parseInt(row.active_accruals) || 0;
+                            let apDist = parseInt(row.ap_dist) || 0;
+
+                            return activeAccruals === 0 && apDist === 0;
+                        });
+                    }
+
+                    table.clear().rows.add(temp_details).draw();
+                }
+            });
+        }
+
+        $(document).on('click', '.count-card', function () {
+            let type = $(this).data('type');
+
+            $('.count-card').removeClass('active-card');
+            $(this).addClass('active-card');
+
+            getTemplates(type);
+            nextPrev(type);
+
+            $('#resetFilter').show();
+        });
+            
     // function loadCounts() {
     //     $.ajax({
     //         url: 'ajax/get_dashboard_data.php',

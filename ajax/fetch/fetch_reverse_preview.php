@@ -164,7 +164,7 @@ SELECT name move_name ,amount_untaxed FROM ACCOUNT_MOVE WHERE id = $apv_id
 	,for_reverse as(
 		select 
 maa.id accrual_id,
-maa.date_range_id,
+maa.month_id,
 aad.sbu, 
 	 aad.ACCOUNT_CODE,
         aad.ACCOUNT_ID,
@@ -208,7 +208,7 @@ from
  --   JOIN ACCOUNT_ACCOUNT   AA ON AA.ID = fr.ACCOUNT_ID
   --  JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =AA.m_acc_category_id
     	JOIN M_ACC_ACCRUAL a_main on a_main.id = fr.accrual_id AND A_MAIN.IS_ACCRUAL
-    join m_acc_dist_mo adm on adm.sbu =fr.sbu and fr.date_range_id = adm.date_range_id
+    join m_acc_dist_mo adm on adm.sbu =fr.sbu and fr.month_id = adm.month_id
 		JOIN M_ACC_CATEGORY_ACCOUNTS   ACA ON ACA.ACCOUNT_ID = fr.ACCOUNT_ID and aca.Acc_category_id = a_main.dist_categ_id 
 		JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.Acc_category_id
 join 	(SELECT name move_name ,amount_untaxed FROM ACCOUNT_MOVE WHERE id =$apv_id) am on am.move_name is not null

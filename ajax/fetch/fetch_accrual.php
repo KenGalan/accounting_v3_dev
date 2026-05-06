@@ -48,12 +48,14 @@ if ($year_month != '') {
     // where (not mam.is_dept_distributed or not mam.is_all_reversed)
     // and mam.active
     // order by acc_active, mam.year_month";
-    $q = "select distinct mam.*, coalesce(maa.month_id,null) month_id
+    $q = "select distinct mam.*, coalesce(maa.month_id,null) month_id, maa.active
     ,case when distributed_account_move_id is not null then 'True' else 'False' end as odoo_inserted
      from m_acc_month mam
 left join m_acc_accrual maa on maa.month_id = mam.id and maa.is_accrual
 --where is_dept_distributed 
-order by  month_id nulls last,year_month desc";
+--order by  month_id nulls last,year_month desc
+order by  maa.active  nulls last,year_month desc
+";
 }
 
 
@@ -132,10 +134,7 @@ WITH acdr AS (
 	--) A ON TO_CHAR(A.MIN_DATE,'YYYY-MM') = ADR.YEAR_MONTH
    -- where not adr.is_all_reversed
 
-   select distinct mam.*, coalesce(maa.month_id,null) month_id from m_acc_month mam
-   left join m_acc_accrual maa on maa.month_id = mam.id and maa.is_accrual
-   --where is_dept_distributed 
-   order by  month_id nulls last,year_month desc limit 1
+     select * from m_acc_month mam where id =$month_id
 )
 SELECT
     ma.id,

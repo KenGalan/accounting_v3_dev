@@ -1565,7 +1565,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         year_month = date_range_val['year_month'];
 
                         currentMonthYearValue = newMonthSelected !== '' ? newMonthSelected : year_month;
-                        // console.log(newMonthSelected)
+                        console.log(newMonthSelected)
                         $('#yearMonthSelect').val(currentMonthYearValue)
 
 
@@ -1582,6 +1582,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                         const distributed = date_range_val['is_dept_distributed'] === 't';
                         $('#btnRunDist, #btnModalAccrual').toggle(!distributed);
+
                         $('#btnInsertToOdoo').toggle(date_range_val['odoo_inserted'] !== 'True' && date_range_val['is_dept_distributed'] === 't');
 
 
@@ -2416,7 +2417,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 success: function(data) {
                     $('#btnExcel').show();
                     // console.log(data);
-
 
                     active_acc = data['active_accrual']
                     date_range_val = data['date_range'];

@@ -421,7 +421,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             journal_acc_global = await journalAccList();
             initDistTable();
             // loadYearMonth();
-
             fetchAccrual(currentMonthYearValue)
         }
 

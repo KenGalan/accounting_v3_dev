@@ -23,59 +23,60 @@ $move_id = $_POST['am_id'];
 // ";
 
 $q = "
-WITH setup AS (
+    WITH setup AS (
+        SELECT 
+            ac.move_id,
+            acdl.move_line_id,
+            unnest(acdl.sbu) AS sbu_id,
+            acdl.id AS cust_line_dist_id
+        FROM m_acc_cust_dist ac
+        JOIN m_acc_cust_dist_line acdl 
+            ON acdl.move_id = ac.move_id
+    )
     SELECT 
-        ac.move_id,
-        acdl.move_line_id,
-        unnest(acdl.sbu) AS sbu_id,
-        acdl.id AS cust_line_dist_id
-    FROM m_acc_cust_dist ac
-    JOIN m_acc_cust_dist_line acdl 
-        ON acdl.move_id = ac.move_id
-)
-SELECT 
-    aml.move_name,
-    aa.code || ' ' || aa.name AS account_name,
-    am.state AS status,
-    am.type,
-    aml.name AS item_label,
-    aml.date,
-    aml.debit,
-    aml.credit,
-    am.id,
-    aml.id AS aml_id,
-    aaa.name AS account_analytic,
-    COALESCE(
-        json_agg(asm.sbu ORDER BY s.sbu_id) 
-        FILTER (WHERE s.sbu_id IS NOT NULL),
-        '[]'::json
-    ) AS sbu,
-    COALESCE(
-        json_agg(s.sbu_id ORDER BY s.sbu_id) 
-        FILTER (WHERE s.sbu_id IS NOT NULL),
-        '[]'::json
-    ) AS sbu_ids,
-     s.cust_line_dist_id
-FROM account_move_line aml
-JOIN account_move am ON aml.move_id = am.id
-JOIN account_account aa ON aml.account_id = aa.id
-LEFT JOIN account_analytic_account aaa ON aml.analytic_account_id = aaa.id
-LEFT JOIN setup s ON s.move_line_id = aml.id
-LEFT JOIN m_acc_sbu_maint asm ON asm.id = s.sbu_id
-WHERE aml.move_id = $1
-GROUP BY 
-    aml.move_name,
-    aa.code || ' ' || aa.name,
-    am.state,
-    am.type,
-    aml.name,
-    aml.date,
-    aml.debit,
-    aml.credit,
-    am.id,
-    aml.id,
-    aaa.name,
-    s.cust_line_dist_id
+        aml.move_name,
+        aa.code || ' ' || aa.name AS account_name,
+        am.state AS status,
+        am.type,
+        aml.name AS item_label,
+        aml.date,
+        aml.debit,
+        aml.credit,
+        am.id,
+        aml.id AS aml_id,
+        aaa.name AS account_analytic,
+        COALESCE(
+            json_agg(asm.sbu ORDER BY s.sbu_id) 
+            FILTER (WHERE s.sbu_id IS NOT NULL),
+            '[]'::json
+        ) AS sbu,
+        COALESCE(
+            json_agg(s.sbu_id ORDER BY s.sbu_id) 
+            FILTER (WHERE s.sbu_id IS NOT NULL),
+            '[]'::json
+        ) AS sbu_ids,
+        s.cust_line_dist_id
+    FROM account_move_line aml
+    JOIN account_move am ON aml.move_id = am.id
+    JOIN account_account aa ON aml.account_id = aa.id
+    LEFT JOIN account_analytic_account aaa ON aml.analytic_account_id = aaa.id
+    LEFT JOIN setup s ON s.move_line_id = aml.id
+    LEFT JOIN m_acc_sbu_maint asm ON asm.id = s.sbu_id
+    JOIN m_acc_customized_dist_accounts acd ON acd.account_id = aml.account_id and acd.active -- ADDED BY KEN
+    WHERE aml.move_id = $1
+    GROUP BY 
+        aml.move_name,
+        aa.code || ' ' || aa.name,
+        am.state,
+        am.type,
+        aml.name,
+        aml.date,
+        aml.debit,
+        aml.credit,
+        am.id,
+        aml.id,
+        aaa.name,
+        s.cust_line_dist_id
 ";
 
 $result = $db->fetchAll($q, [$move_id]);

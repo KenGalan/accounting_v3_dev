@@ -47,7 +47,8 @@ $setup_pages = [
     'account_tagging.php',
     'distribution_cost_maintenance.php',
     'date_range_maintenance.php',
-    'user_maintenance.php'
+    'user_maintenance.php',
+    'sbu_maintenance.php'
 ];
 
 $isSetupActive = in_array($basename_server, $setup_pages);
@@ -348,13 +349,22 @@ $activeCount = count($activeUsers); // END
                             </li> -->
                         <?php } ?>
 
-                        <?php if ($userDept === "Management Information System") { ?>
+                           <?php if ($userDept === "Management Information System") { ?>
+                            <li class="<?php echo ($basename_server == 'sbu_maintenance.php' ? 'active' : ''); ?>">
+                                <a href="sbu_maintenance.php" class="waves-effect waves-block">
+                                    <span>SBU Maintenance</span>
+                                </a>
+                            </li>
+                        <?php } ?>
+
+                            <?php if ($userDept === "Management Information System") { ?>
                             <li class="<?php echo ($basename_server == 'user_maintenance.php' ? 'active' : ''); ?>">
                                 <a href="user_maintenance.php" class="waves-effect waves-block">
                                     <span>User Access</span>
                                 </a>
                             </li>
                         <?php } ?>
+
                     </ul>
                 </li>
             <?php } ?>

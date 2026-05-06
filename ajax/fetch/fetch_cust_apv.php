@@ -10,6 +10,7 @@ WITH setup AS (
     FROM m_acc_cust_dist
 )
 SELECT
+CD.ID CD_ID,
     am.name AS journal_entry,
     am.ref AS reference,
     am.amount_total,
@@ -34,8 +35,10 @@ FROM account_move am
 JOIN account_move_line aml 
     ON aml.move_id = am.id 
     AND aml.debit > 0
-JOIN m_acc_customized_dist_accounts acd 
-    ON acd.reference = aml.ref and acd.active
+--JOIN m_acc_customized_dist_accounts acd 
+   -- ON acd.reference = aml.ref and acd.active
+    JOIN m_acc_customized_dist_accounts acd 
+    ON acd.account_id = aml.account_id and acd.active
 LEFT JOIN m_acc_cust_dist cd 
     ON cd.move_id = am.id
 LEFT JOIN setup 
@@ -45,6 +48,7 @@ LEFT JOIN m_acc_sbu_maint sm
 WHERE to_char(am.date, 'YYYY-MM') = '$yearMonth'
 AND am.state = 'posted'
 GROUP BY
+CD.ID,
     am.name,
     am.ref,
     am.amount_total,
