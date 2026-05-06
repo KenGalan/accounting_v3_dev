@@ -1596,6 +1596,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         $('#btnModalAccrual').attr('data-yearmonth-id', newMonthSelected);
                         // $('#btnInsertToOdoo').toggle();
                         $('#btnRunDist, #btnInsertToOdoo').css('display', 'none');
+                        $(' #btnModalAccrual').toggle(true);
                     }
 
                     if (active_acc) {
