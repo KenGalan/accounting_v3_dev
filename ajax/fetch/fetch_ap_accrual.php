@@ -31,8 +31,12 @@ mam.is_ap_distributed else false end is_ap_distributed
 // order by acc_active";
 // }
 
-
-
+// $filename = pathinfo($_SERVER['PHP_SELF'], PATHINFO_FILENAME);
+$transaction_type = isset($_POST['transaction_type']) ? $_POST['transaction_type'] : '';
+// echo $transaction_type;
+//  exit;
+// echo $filename;
+// exit;
 $resulta = $db->fetchRow($q);
 // var_dump($resulta);
 // exit; 
@@ -66,6 +70,7 @@ LEFT JOIN M_ACC_COST_DISTRIBUTION acd ON acd.m_acc_category_id = ma.dist_categ_i
 LEFT JOIN account_account aa2 ON aa2.id = acd.debit_to
 left join account_move am on am.id = ma.actual_apv_id
 where mam.id = $month_id
+AND ma.transaction_type = '$transaction_type'
 group by
 ma.from_date,
 ma.to_date,

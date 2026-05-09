@@ -45,14 +45,16 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         background: #ffffff;
         padding: 20px 25px;
         border-radius: 12px;
+        /* overflow-x: auto;
+        overflow-y: hidden; */
         /* box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); */
-        font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+        /* font-family: "Inter", "Segoe UI", Roboto, sans-serif; */
     }
 
     #distTable {
         width: 100%;
         border-collapse: collapse;
-        font-size: 16px;
+        font-size: 12pt;
         color: #333;
     }
 
@@ -62,7 +64,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
     #distTable th {
         text-align: left;
-        padding: 14px 16px;
+        /* padding: 14px 16px; */
         font-weight: 600;
         color: #ffffff;
         border-bottom: 2px solid #e5e7eb;
@@ -95,9 +97,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
     #distTable td:last-child button:hover {
         background: #0056d2;
     }
-      #distTable td:last-child button:hover {
-        background: #0056d2;
-    }
 
     #distTable td:nth-child(2) select {
     width: 100% !important;
@@ -115,7 +114,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
     width: 100% !important;
     max-width: 350px;
     }
-
     /* .totalVal{
         width: 350px;
     } */
@@ -152,7 +150,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
     <select id="yearMonthSelect" data-selected="<?= $selectedYM ?>" class="form-control" style="width:250px;">
         <option class="custom-option" value=""></option>
     </select> -->
-    <h4 style="margin-bottom: 15px; float: right; background-color:#7C7BAD; padding: 8px; color: #ffffff; border-radius: 2px;">A/P Distribution</h4>
+    <h4 style="margin-bottom: 15px; float: right; background-color:#007BFF; padding: 8px; color: #ffffff; border-radius: 2px;">PREPAID EXPENSE DISTRIBUTION</h4>
     <input type="month" name="month_year" id="yearMonthSelect" class="form-control" style="width:250px; display:unset !important">
     <button class="btn btn-success" id="btnRunDist">Run Distribution</button>
     <button class="btn btn-primary" id="btnModalAccrual">Add Item</button>
@@ -168,7 +166,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             <span class="slider"></span>
         </label>
     <?php } ?> -->
-    <table id="distTable" class="table table-bordered table-striped" style="width:100%">
+    
+    <table id="distTable" class="table table-bordered table-striped">
         <thead>
             <tr>
                 <th>Item ID</th>
@@ -377,8 +376,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         Import Excel
                         <input type="file" id="importExcel" hidden>
                     </label>
-                </div>
-                <div class="excelFormat" style="margin-left: 8px; margin-bottom: 15px; display:inline-block !important;">
+                </div> -->
+                <!-- <div class="excelFormat" style="margin-left: 8px; margin-bottom: 15px; display:inline-block !important;">
                     <a id="downloadExcelBtn">Download Excel Format</a>
                 </div> -->
                 <div class="mb-2 text-end">
@@ -464,7 +463,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             $row.find('.cancelBtn').toggleClass('d-none');
             if ($btn.data('btn') === 'edit') {
                 // enter edit mode
-                removeDisabledAttr($row, '.accountSelect'); // function in helpers.js
+                // removeDisabledAttr($row, '.accountSelect'); // function in helpers.js
                 removeDisabledAttr($row, '.distribution-input'); // function in helpers.js
                 removeDisabledAttr($row, '.disttemplateSelect'); // function in helpers.js
                 // removeDisabledAttr($row, '.journalAccTemp');
@@ -797,28 +796,61 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         validateDistRow($(this));
                     });
                 },
-                columns: [{
+                columns: [
+                    // {
+                    //     data: null,
+                    //     render: function(row) {
+
+
+                    //         html = '';
+                    //         html += '<select class="creditAcc" id="txtDeptGroupSel" >';
+                    //         html += `<option value="">Select Account</option>`;
+
+                    //         accounts_tagged_global.forEach(j => {
+
+
+                    //             if (j.full_name) {
+
+
+                    //                 html += `<option value="${j.id}" ${row.credit_to_id== j.id ? 'selected' : ''}>${j.full_name}</option>`;
+                    //             }
+
+                    //         });
+
+                    //         html += `</select>`;
+
+
+                    //         return html;
+                    //     }
+                    // },
+                    {
                         data: null,
                         render: function(row) {
 
+                            let html = '';
 
-                            html = '';
-                            html += '<select class="creditAcc" id="txtDeptGroupSel" >';
-                            html += `<option value="">Select Account</option>`;
+                            html += '<select class="creditAcc" id="txtDeptGroupSel" disabled>';
 
                             accounts_tagged_global.forEach(j => {
 
+                                let selected = '';
 
-                                if (j.full_name) {
-
-
-                                    html += `<option value="${j.id}" ${row.credit_to_id== j.id ? 'selected' : ''}>${j.full_name}</option>`;
+                                if (row.credit_to_id == j.id) {
+                                    selected = 'selected';
                                 }
 
+                                else if ((!row.credit_to_id || row.credit_to_id == '') && j.id == 2883) {
+                                    selected = 'selected';
+                                }
+
+                                html += `
+                                    <option value="${j.id}" ${selected}>
+                                        ${j.full_name}
+                                    </option>
+                                `;
                             });
 
                             html += `</select>`;
-
 
                             return html;
                         }
@@ -926,7 +958,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                                 journal_acc_global.forEach(j => {
 
-                                    let selected = (j.journal_id == 2) ? 'selected' : '';
+                                    let selected = (j.journal_id == 3) ? 'selected' : '';
 
                                     html += `
                                         <option 
@@ -1525,6 +1557,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             return data;
         }
 
+
+
         function insertAccrual(acc_data, month_id, year_month) {
             let pageName = window.location.pathname.split('/').pop(); 
             let transactionType = pageName.replace('.php', '');
@@ -1560,7 +1594,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 return;
             }
 
-            $.ajax({
+            $.ajax({ 
                 type: 'POST',
                 url: 'ajax/transaction/insert_accrual_ap.php',
                 dataType: 'json',
@@ -1610,10 +1644,13 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
         }
 
+
+
+
         function fetchAccrual(newMonthSelected) {
             let pageName = window.location.pathname.split('/').pop(); 
             let transactionType = pageName.replace('.php', '');
-            // console.log(transactionType, 'dqwdwqdwqd');
+            // console.log(transactionType, 'dqwdqwd');
 
             $.ajax({
                 url: "ajax/fetch/fetch_ap_accrual.php",
@@ -1693,7 +1730,8 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
             distTable = $("#distTable").DataTable({
                 pageLength: 5,
                 scrollX: true,
-                autoWidth: true,
+                // scrollCollapse: true,
+                autoWidth: false,
                 responsive: false,
                 drawCallback: function() {
                     $('.accountSelect').select2({
@@ -1751,7 +1789,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                         data: null,
                         render: function(row) {
 
-
                             html = '';
                             html += '<select class="disttemplateSelect" disabled>';
                             html += `<option value="">Select Account</option>`;
@@ -1760,11 +1797,9 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                                 html += `<option value="${j.id}" ${row.category_id== j.id ? 'selected' : ''}>${j.acc_category}</option>`;
 
-
                             });
 
                             html += `</select>`;
-
 
                             return html;
                         }
@@ -1772,7 +1807,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     {
                         data: null,
                         render: function(row) {
-
 
                             html = ''; 
                             html += '<select class="journalAccTemp" disabled>';
@@ -1785,7 +1819,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                             });
 
                             html += `</select>`;
-
 
                             return html;
                         }
@@ -1883,10 +1916,6 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
         }
 
         function generateJournalEntries(month_id, yearMonth) {
-            let pageName = window.location.pathname.split('/').pop(); 
-            let transactionType = pageName.replace('.php', '');
-            console.log(transactionType, 'dqwdqwdw')
-
 
             $.ajax({
                 type: 'POST',
@@ -1894,8 +1923,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                 dataType: 'json',
                 data: {
                     month_id: month_id,
-                    // is_accrual: false
-                    transactionType: transactionType,
+                    is_accrual: false
                 },
 
                 success: function(response) {

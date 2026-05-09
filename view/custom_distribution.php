@@ -1442,12 +1442,13 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
             $.ajax({
                 type: 'POST',
-                url: 'ajax/transaction/save_distributed_journal.php',
+                url: 'ajax/transaction/save_distributed_transaction.php',
                 dataType: 'json',
                 data: {
                     yearMonth: yearMonth,
                     is_accrual: false,
                     cust_data: JSON.stringify(cust_data),
+                    transaction_type: 'custom_distribution'
                 },
 
                 success: function(response) {
@@ -1455,6 +1456,7 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
                     // console.log(yearMonth)
                     // fetchAccrual(yearMonth)
                     // previewJournalEntries(month_id, yearMonth)
+                    insertToOdoo(cust_data);
                     // $('#previewInsertToOdoo').modal('show');
                     // $('#previewInsertToOdoo #btnSubmitToOdoo').attr('data-id', month_id)
 
@@ -1462,6 +1464,40 @@ $selectedYM = isset($_GET['ym']) ? $_GET['ym'] : '';
 
                 }
             });
+        }
+
+        function insertToOdoo(cust_data) {
+            $.ajax({
+                url: "ajax/transaction/insert_transaction_to_odoo.php",
+                method: "POST",
+                dataType: "json",
+                data: {
+                    cust_data: JSON.stringify(cust_data),
+                },
+                success: function(data) {
+
+                    if (data.status === 'exists') {
+                        swal(
+                            "Success",
+                            "Already Exists",
+                            "success"
+                        );
+                        return;
+
+                    }
+                    stopLoading('body');
+                    init();
+
+                    // $('#previewInsertToOdoo').modal('hide');
+                    swal(
+                        "Success",
+                        "Journal Generated",
+                        "success"
+                    );
+                    // window.location =
+                    //     "generated_distribution.php?id=" + month_id + "&ym=" + yearMonth;
+                }
+            })
         }
 
         function getCheckedData() {

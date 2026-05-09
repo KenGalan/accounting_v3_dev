@@ -393,16 +393,77 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
     #categoryTable_filter {
         margin-top: -45px;
     }
+
+    .category_wrapper {
+        max-width: 100%;
+        margin: 40px auto;
+        background: #ffffff;
+        padding: 20px 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        /* font-family: "Inter", "Segoe UI", Roboto, sans-serif; */
+    }
+
+    #deptTable2 {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 16px;
+        color: #333;
+    }
+
+    #deptTable2 thead {
+        background: #f8f9fb;
+    }
+
+    #deptTable2 th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 600;
+        color: #ffffff;
+        border-bottom: 2px solid #e5e7eb;
+        background-color: #7C7BAD;
+    }
+
+    #deptTable2 tbody tr {
+        transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    #deptTable2 tbody tr:nth-child(even) {
+        background: #fafafa;
+    }
+
+    #deptTable2 td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    #deptTable2 td:last-child button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.2s ease;
+    }
+
+    #deptTable2 td:last-child button:hover {
+        background: #0056d2;
+    }
 </style>
 
 <body>
- <?php if ($_SESSION['ppc']['emp_no'] == "10947") { ?>
-<div class="container-btn" style="padding:20px;">
+ <!-- <?php if ($_SESSION['ppc']['emp_no'] == "10947") { ?> -->
+<div class="container-btn" style="padding:20px; margin-bottom: 15px;">
     <button id="viewDistPercBtn" class="btn active">Distribution</button>
-    <button id="viewTemplateBtn" class="btn" style="margin-left:15px;">Distribution Template</button>
+    <button id="viewTemplateBtn" class="btn" style="margin-left:15px;">Template</button>
+    
+    <!-- <p id="deptTitle" style="float:right; border:4px solid #7C7BAD; padding:5px; font-size: 12pt;"><i class="material-icons" style="color:#750728;">warning</i> Complete distribution setup.</p> -->
+    <p id="depGrouptTitle" style="float:right; border:4px solid #7C7BAD; padding:5px; font-size: 12pt;  display:none;"><i class="material-icons" style="color:#750728;">warning</i> Add a template to setup it in the distribution.</p>
 </div>
-<hr/>
-<?php } ?>
+
+<!-- <?php } ?> -->
 
     <div id="categoryContainer">
         <div class="instruct" style="margin-top: 15px; margin-bottom: 15px;">
@@ -547,6 +608,38 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
         </div>
     </div>
+
+    <div id="templateContainer" class="tempContainer" style="display: none;">
+    <div style="margin-bottom: 15px;">
+        <button id="addCategoryBtn">Add Category</button>
+    </div>
+
+    <div id="addCategoryContainer" style="display:none; margin-bottom: 15px;">
+        <input type="text" id="newCategoryInput" placeholder="Enter category name" />
+        <button id="saveCategoryBtn">Save</button>
+        <button class="btn-danger" id="cancelCategoryBtn">Cancel</button>
+    </div>
+
+    <div class="category_wrapper">
+        <table id="deptTable2" class="display" style="width:100%;">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Date Added</th>
+                    <th>Added By</th>
+                    <!-- <th>Changed On</th>
+            <th>Changed By</th> -->
+                    <th>Journal</th>
+                    <th>MO Distribution Reference</th>
+                    <!-- <th>Active</th> -->
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
     <!-- <hr style="border: 0.5px solid #cccccc;"> -->
 
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -846,6 +939,8 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
                         $('#deptSelect').empty();
                         $('#detailsContainer').show();
+                        $('#viewTemplateBtn').hide();
+                        $('#viewDistPercBtn').hide()
 
                         data.forEach(dept => {
                             $('#deptSelect').append(`
@@ -1958,6 +2053,8 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
                 $('#detailsContainer').addClass('hidden');
                 $('#categoryContainer').show();
                 $('#categoryLabel').text('');
+                $('#viewTemplateBtn').show();
+                $('#viewDistPercBtn').show();
                 // $('#deptActionContainer').hide();
                 fetch_categories();
             });
@@ -1991,6 +2088,12 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
     $('#viewDistPercBtn').on('click', function () {
          $('#categoryContainer').show();
+         $('.tempContainer').hide();
+         $('#depGrouptTitle').hide();
+        //   $('#deptTitle').show();
+
+        $('#viewDistPercBtn').addClass('active');
+        $('#viewTemplateBtn').removeClass('active');
         // $('#departmentSection').show();
         // $('#departmentGroupSection').hide();
         // $('#depGrouptTitle').hide();
@@ -2004,10 +2107,15 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 
     $('#viewTemplateBtn').on('click', function () {
         $('#categoryContainer').hide();
+        $('.tempContainer').show();
+        $('#depGrouptTitle').show();
+        // $('#deptTitle').hide();
         // $('#departmentSection').hide();
         // $('#departmentGroupSection').show();
         // $('#deptTitle').hide();
         // $('#depGrouptTitle').show();
+        $('#viewTemplateBtn').addClass('active');
+        $('#viewDistPercBtn').removeClass('active');
 
         // $('#viewDeptGrpBtn').addClass('active');
         // $('#viewDeptBtn').removeClass('active');
@@ -2038,4 +2146,7 @@ $result_all_accounts = pg_query($conn, $query_all_accounts);
 }); // END
 
     </script>
+ 
+ <script src="public/app/category_acc_maint.js"></script>
 </body>
+

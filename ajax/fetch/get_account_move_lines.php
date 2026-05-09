@@ -63,7 +63,7 @@ $q = "
     LEFT JOIN setup s ON s.move_line_id = aml.id
     LEFT JOIN m_acc_sbu_maint asm ON asm.id = s.sbu_id
     JOIN m_acc_customized_dist_accounts acd ON acd.account_id = aml.account_id and acd.active -- ADDED BY KEN
-    WHERE aml.move_id = $1
+    WHERE aml.move_id = $1 and aml.debit >0
     GROUP BY 
         aml.move_name,
         aa.code || ' ' || aa.name,

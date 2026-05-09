@@ -590,6 +590,8 @@
                         if (row.ap_dist != 0) {
                             active_entries += `
                                             <span class="dblock" style="
+                                                color: white;
+                                                font-weight:550;
                                                 padding:0.3rem 1rem;
                                                 background:#4cbb51;
                                             ">

@@ -3,6 +3,7 @@ session_start();
 header('Content-Type: application/json');
 
 $db = new Postgresql();
+$db_ken = new PostgresqlKen();
 $conn = $db->getConnection();
 
 if (!$conn) {
@@ -39,7 +40,7 @@ foreach ($rows as $r) {
 
     if ($move_id === '' || $total_amount === '' || $accounting_date === '') {
         echo json_encode([
-            'status' => 'error', 
+            'status' => 'error',
             'message' => 'Missing row data.'
         ]);
         exit;
@@ -81,7 +82,7 @@ foreach ($rows as $r) {
         $params = [$move_id];
 
         $setParts = [];
-        
+
         if ($from_date !== null && $to_date !== null) {
             $params[] = $from_date;
             $setParts[] = "from_date = $" . count($params);
@@ -144,10 +145,9 @@ foreach ($rows as $r) {
             ]);
             exit;
         }
-
     } else {
 
-        $pg_sbu_array = '{}';
+        $pg_sbu_array = null;
 
         if ($sbu !== null) {
             if (is_string($sbu)) {
@@ -161,32 +161,23 @@ foreach ($rows as $r) {
             $pg_sbu_array = '{' . implode(',', $sbu) . '}';
         }
 
-        $insert_sql = "
-            INSERT INTO m_acc_cust_dist (
-                move_id,
-                from_date,
-                to_date,
-                total_amount,
-                accounting_date,
-                added_by,
-                sbu,
-                mo_dist
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ";
+        $dist_entries = [
+            'MOVE_ID' =>    $move_id,
+            'FROM_DATE' => $from_date,
+            'TO_DATE' => $to_date,
+            'TOTAL_AMOUNT' => $total_amount,
+            'ACCOUNTING_DATE' => $accounting_date,
+            'ADDED_BY' => $added_by,
+            'SBU' => $pg_sbu_array,
+            'MO_DIST' => $mo_dist
+        ];
 
-        $insert_result = pg_query_params($conn, $insert_sql, [
-            $move_id,
-            $from_date,
-            $to_date,
-            $total_amount,
-            $accounting_date,
-            $added_by,
-            $pg_sbu_array,
-            $mo_dist
-        ]);
+        $newId = $db_ken->insert_get_id('M_ACC_CUST_DIST', $dist_entries, 'id');
 
-        if (!$insert_result) {
+
+
+
+        if (!$newId) {
             echo json_encode([
                 'status' => 'error',
                 'message' => 'Failed to save data.'

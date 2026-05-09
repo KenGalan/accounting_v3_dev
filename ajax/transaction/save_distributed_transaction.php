@@ -2,13 +2,13 @@
 
 session_start();
 
-$db = new Postgresql();
 $db_ken = new PostgresqlKen();
+
 $month_id = isset($_POST['month_id']) ?  $_POST['month_id'] : null;
 $yearMonth = isset($_POST['yearMonth']) ?  $_POST['yearMonth'] : null;
 $cust_data = isset($_POST['cust_data']) ? json_decode($_POST['cust_data'], true) : [];
 $transaction_type = isset($_POST['transaction_type']) ? $_POST['transaction_type'] : '';
-$is_accrual = $_POST['is_accrual'];
+// $is_accrual = $_POST['is_accrual'];
 $user = $_SESSION['ppc']['emp_no'];
 $cd_ids = '';
 
@@ -17,57 +17,66 @@ if (!isset($_SESSION['ppc']['emp_no'])) : $user = 0;
     exit;
 endif; //NOT ISSET SESSION
 
-$accrual_where = $is_accrual == 'true' ? '' : 'NOT';
+// $accrual_where = $is_accrual == 'true' ? '' : 'NOT';
 
-if ($month_id) {
+//checking if month exists
 
-    $selectDateRange =
-        $db_ken->fetchAll("SELECT 
-DISTINCT
-to_char(FROM_DATE,'YYYY-MM-DD') start_date, 
-to_char(TO_DATE, 'YYYY-MM-DD') end_date,
-to_char(TO_DATE, 'MM/DD/YYYY') end_date_slash
-, TO_CHAR(to_date(to_char(FROM_DATE ,'YYYY-MM'),'YYYY-MM') + INTERVAL '1 month - 1 day', 'MM/DD/YYYY') LAST_DATE_OF_MONTH
-FROM M_ACC_ACCRUAL WHERE ACTIVE AND $accrual_where IS_ACCRUAL AND MONTH_ID =$month_id");
-} else { //checking if month exists
+//checking if month already exists
+$hasMonth = $db_ken->fetchRow("select id from m_Acc_month where year_month ='$yearMonth'");
+
+if (!$hasMonth) {
+    $month_entries = [
+        'YEAR_MONTH' =>    $yearMonth
+    ];
+
+    $month_id = $db_ken->insert_get_id('M_ACC_MONTH', $month_entries, 'id');
+    // echo 'wala';
+} else {
+    $month_id = $hasMonth['id'];
+    // echo 'meron';
+}
+
+foreach ($cust_data as $row) {
+    // echo $row['cd_id']; 
+    $cd_ids .= $row['cd_id'] . ',';
+
+    $cd_id = $row['cd_id'];
+    $details = $db_ken->fetchRow("select a.*, am.journal_id, aj.name journal_name from m_Acc_cust_dist a
+    join account_move am on am.id = a.move_id 
+    join account_journal aj on aj.id = am.journal_id
+     where a.id = $cd_id");
 
 
-    foreach ($cust_data as $row) {
-        // echo $row['cd_id']; 
-        $cd_ids .= $row['cd_id'] . ',';
+    $entry_details = [
+        'TOTAL_ACCRUAL_VALUE' => $details['total_amount'],
+        'FROM_DATE' => $details['from_date'],
+        'TO_DATE' => $details['to_date'],
+        'MONTH_ID' =>  $month_id,
+        'JOURNAL_ID' => $details['journal_id'],
+        'JOURNAL_NAME' => $details['journal_name'],
+        'DATE' => $details['accounting_date'],
+        'TRANSACTION_TYPE' => $transaction_type
+    ];
+
+    $new_acc_id = $db_ken->insert_get_id('M_ACC_ACCRUAL', $entry_details, 'id');
+    if ($new_acc_id) {
+        $db_ken->query("UPDATE M_ACC_CUST_DIST SET accrual_id = $new_acc_id WHERE ID = $cd_id");
     }
-    // remove last comma
-    $cd_ids = rtrim($cd_ids, ',');
+}
+// remove last comma
+$cd_ids = rtrim($cd_ids, ',');
 
-    $selectDateRange  = $db_ken->fetchAll("SELECT 
+$selectDateRange  = $db_ken->fetchAll("SELECT 
     DISTINCT
     to_char(FROM_DATE,'YYYY-MM-DD') start_date, 
     to_char(TO_DATE, 'YYYY-MM-DD') end_date,
     to_char(TO_DATE, 'MM/DD/YYYY') end_date_slash
     , TO_CHAR(to_date(to_char(FROM_DATE ,'YYYY-MM'),'YYYY-MM') + INTERVAL '1 month - 1 day', 'MM/DD/YYYY') LAST_DATE_OF_MONTH
     FROM m_acc_cust_dist WHERE ACTIVE and id in ($cd_ids)");
-    // exit;
+// exit;
 
 
-    //checking if month already exists
-    $hasMonth = $db_ken->fetchRow("select id from m_Acc_month where year_month ='$yearMonth'");
 
-    if (!$hasMonth) {
-        $month_entries = [
-            'YEAR_MONTH' =>    $yearMonth
-        ];
-
-        $month_id = $db_ken->insert_get_id('M_ACC_MONTH', $month_entries, 'id');
-        // echo 'wala';
-    } else {
-        $month_id = $hasMonth['id'];
-        // echo 'meron';
-    }
-
-
-    // echo  $month_id;
-    // exit;
-}
 
 
 
@@ -342,7 +351,7 @@ if ($selectDateRange) {
  ";
 
 
-        $resultmos = $db->fetchAll($qmos);
+        $resultmos = $db_ken->fetchAll($qmos);
 
         // var_dump($resultmos);
         // exit;
@@ -392,7 +401,7 @@ if ($selectDateRange) {
             $resultLineItems = $db_ken->insert('M_ACC_MO_WIP', $dataMoEntries);
         }
     }
-    exit;
+    // exit;
     // if ($transaction_type == 'custom_distribution') {
     // }
     if ($transaction_type == 'custom_distribution') {
@@ -546,7 +555,7 @@ acd.to_date,acd.sbu_names,cda.cogs_account_id
      from
      main m )
      select 
-     dcem.acd_id,
+     dcem.acd_id transaction_id,
      aj.name journal,
       dcem.journal_id,
      AA.CODE ACCOUNT_CODE,
@@ -571,285 +580,9 @@ acd.to_date,acd.sbu_names,cda.cogs_account_id
      LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
      left join account_journal aj on aj.id = dcem.journal_id
      ORDER BY acd_id";
-    } else {
-        $q = "WITH categ_percentage as (
-            SELECT 
-         act.id act_id,
-             act.acc_category,
-             coalesce(sum(acd.distribution_percentage),0) acc_categ_percentage,
-         --ACD.distribution_percentage,
-             act.journal_id
-             FROM m_acc_category_tbl act
-             LEFT JOIN M_ACC_CATEGORY_ACCOUNTS ACA ON ACA.ACC_CATEGORY_ID = ACT.ID
-             left join m_acc_cost_distribution acd on acd.m_acc_category_id =ACA.ACC_CATEGORY_ID AND ACD.DEBIT_TO = ACA.ACCOUNT_ID
-             group by  act.id, act.acc_category			  
-         )
-            , detailed_percentage as (
-             select 
-             acd.distribution_percentage ,
-             acd.m_acc_category_id,
-             acd.analytic_account_id,
-             COALESCE(adg.dept_group, ADG2.DEPT_GROUP) DEPT_GROUP,
-             COALESCE(ADG.ID,ADG2.ID) DEPT_GROUP_ID,
-             COALESCE(aaa.name,ADG2.DEPT_GROUP) dept 
-             ,aaa.code,
-             acd.debit_to,
-             acd.wip_account,
-             cp.journal_id
-             from
-             m_acc_cost_distribution acd
-              left JOIN account_analytic_account aaa ON aaa.id = acd.analytic_account_id
-              left join m_acc_department_groups adg on adg.id =aaa.m_acc_group_id
-               LEFT JOIN categ_percentage CP ON CP.ACT_ID = ACD.m_acc_category_id 
-               LEFT JOIN M_ACC_DEPARTMENT_GROUPS ADG2 ON ADG2.ID = ACD.GROUP_ID
-                WHERE CP.acc_categ_percentage = 100
-              --  and acd.m_acc_category_id =1
-              order by m_acc_category_id, dept_group
-                 )
-          ,accrual_entry as(
-        SELECT 
-              maa.id accrual_id,
-        MAA.TOTAL_ACCRUAL_VALUE total_debit,
-         DP.distribution_percentage,
-         trunc(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100),2) allocation_trunc,
-         MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100) allocation,
-         sum(trunc(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100),2)) over (partition by MAA.ID) total_allocation_trunc,
-             sum(MAA.TOTAL_ACCRUAL_VALUE * (DP.distribution_percentage/100)) over (partition by MAA.ID) total_allocation,
-         DP.dept_group,
-          DP.dept_group_ID,
-         DP.dept,
-             DP.analytic_account_id,
-             maa.credit_to,
-             dp.debit_to,
-             dp.wip_account,
-             dp.journal_id,
-              MAA.FROM_DATE,
-              MAA.TO_DATE,
-              SBU.SBU
-        FROM
-              M_ACC_ACCRUAL MAA
-              JOIN detailed_percentage DP ON DP.m_acc_category_id =MAA.DIST_CATEG_ID
-              LEFT JOIN M_ACC_SBU_MAINT SBU ON SBU.ANALYTIC_ACCOUNT_ID = DP.ANALYTIC_ACCOUNT_ID
-              WHERE maa.month_id = $month_id AND $accrual_where MAA.IS_ACCRUAL
-              --MAA.FROM_DATE = TO_dATE('2026-03-20','YYYY-MM-DD')  AND maa.TO_DATE = TO_dATE('2026-03-31','YYYY-MM-DD')
-              )
-                  , ranked as(
-             select
-        ae.accrual_id,
-         ae.total_debit,
-         ae.distribution_percentage,
-         ae.allocation - ae.allocation_trunc allocation_diff,
-         ae.allocation_trunc,
-         ((ae.total_allocation - ae.total_allocation_trunc)/0.01)::integer rows_to_adjust,
-         ROW_NUMBER() OVER (PARTITION BY ae.accrual_id ORDER BY ae.allocation - ae.allocation_trunc DESC) AS rn,
-         ae.dept_group,
-         ae.dept_group_ID,
-         ae.dept,
-                 ae.analytic_account_id,
-                     ae.debit_to,
-                     ae.wip_account,
-                     ae.journal_id,
-                          AE.FROM_DATE,
-              AE.TO_DATE,
-              AE.SBU
-         from accrual_entry ae)
-         , final_DEPT_DIST as (
-         select 
-         accrual_id,
-         distribution_percentage,
-          CASE 
-                 WHEN rn <= rows_to_adjust THEN allocation_trunc + 0.01
-                 ELSE allocation_trunc
-             END AS debit_final,
-         dept_group,
-         dept_group_ID,
-         dept,
-             analytic_account_id,
-             debit_to,
-             wip_account,
-             journal_id,
-                  FROM_DATE,
-              TO_DATE,
-             total_debit total_accrual_debit,SBU
-         from 
-         ranked
-         ), mfg as (
-              select ae.accrual_id,adm.mo,AE.debit_final,ADM.EARNED_HRS/SUM(adm.EARNED_HRS) OVER(PARTITION BY AE.ACCRUAL_ID,ae.wip_account) percentage,
-              ae.debit_final * ADM.EARNED_HRS/SUM(adm.EARNED_HRS) OVER(PARTITION BY AE.ACCRUAL_ID,ae.wip_account) mo_allocation,
-              adm.sbu ,
-              ae.FROM_DATE,
-              ae.TO_DATE,
-             ae.debit_to,
-             ae.wip_account,
-             ae.distribution_percentage,
-             ae.total_accrual_debit,
-             ae.journal_id
-             from final_dept_dist AE
-             JOIN M_ACC_MO_WIP ADM ON ADM.FROM_DATE = AE.FROM_DATE  AND ADM.TO_DATE = AE.TO_DATE AND ADM.REMARKS !='INVOICED BUT NO MOVEMENT'
-             where  ae.wip_account !=0 AND AE.SBU IS NULL
-         ), mfg_sbu as(
-         select 
-         m.accrual_id,
-         m.sbu,
-         sum(mo_allocation) total,
-         trunc(sum(mo_allocation),2) trunc_total,
-             (sum(mo_allocation)/total_accrual_debit)*100 total_pct,
-         trunc((sum(mo_allocation)/total_accrual_debit)*100,2) trunc_total_pct,
-         m.debit_final,
-              m.FROM_DATE,
-              m.TO_DATE,
-              m.debit_to,
-             m.wip_account,
-             m.journal_id,
-             m.distribution_percentage,
-             m.total_accrual_debit
-         from mfg m
-              group by m.accrual_id,
-         m.sbu,m.debit_final,
-              m.FROM_DATE,
-              m.TO_DATE,
-                 m.debit_to,
-             m.wip_account,
-             m.journal_id,
-             m.distribution_percentage,
-             m.total_accrual_debit
-         ), mfg_rank as(
-         select
-         ms.accrual_id,
-         ms.sbu,
-         ms.total sbu_total,
-         ms.trunc_total trunc_sbu_total,
-         sum(ms.total) over(partition by accrual_id,ms.wip_account) total,
-         sum(ms.trunc_total) over(partition by accrual_id, ms.wip_account) trunc_total,
-         ((ms.debit_final - (sum(ms.trunc_total) over(partition by accrual_id, ms.wip_account)))/ 0.01)::integer rows_to_adjust,
-         ROW_NUMBER() OVER (PARTITION BY ms.accrual_id, ms.wip_account ORDER BY ms.total - ms.trunc_total DESC) AS rn,
-         -- pct
-         ms.total_pct ,
-         ms.trunc_total_pct,
-         sum(ms.total_pct) over(partition by accrual_id, ms.wip_account) pct_total,
-         sum(ms.trunc_total_pct) over(partition by accrual_id, ms.wip_account) pct_trunc_total,
-         ((ms.distribution_percentage -(sum(ms.trunc_total_pct) over(partition by accrual_id,ms.wip_account)) )/ 0.01)::integer rows_to_adjust_pct,
-         ROW_NUMBER() OVER (PARTITION BY ms.accrual_id, ms.wip_account ORDER BY ms.total_pct - ms.trunc_total_pct DESC) AS rn_pct,
-         ms.debit_final,
-                  ms.FROM_DATE,
-              ms.TO_DATE,
-                 ms.debit_to,
-             ms.wip_account,
-             ms.journal_id
-         from 
-         mfg_sbu ms
-        ),
-        distributed_final as(
-        select
-        accrual_id,
-        CASE 
-                 WHEN rn_pct <= rows_to_adjust_pct THEN trunc_total_pct + 0.01
-                 ELSE trunc_total_pct
-             END AS distribution_percentage,
-        CASE 
-                 WHEN rn <= rows_to_adjust THEN trunc_sbu_total + 0.01
-                 ELSE trunc_sbu_total
-             END AS debit_final,
-        adg.dept_group,
-        adg.id dept_group_id,
-        aaa.name dept,
-        sbu.analytic_account_id,
-         mr.debit_to,
-             mr.wip_account,
-         mr.journal_id,
-        mr.from_date,
-        mr.to_date
-        from 
-        mfg_rank mr
-        join m_acc_sbu_maint sbu on upper(sbu.sbu) = upper(mr.sbu)
-        left JOIN account_analytic_account aaa ON aaa.id = sbu.analytic_account_id
-              left join m_acc_department_groups adg on adg.id =aaa.m_acc_group_id
-        union all
-        select 
-        ae.accrual_id,
-        ae.distribution_percentage,
-        ae.debit_final,
-        ae.dept_group,
-        ae.dept_group_ID,
-        ae.dept,
-        ae.analytic_account_id,
-        ae.debit_to,
-        ae.wip_account,
-        ae.journal_id,
-        ae.FROM_DATE,
-        ae.TO_DATE
-        from
-        final_DEPT_DIST ae 
-        where
-        AE.wip_account =0 OR( AE.SBU IS NOT NULL AND AE.WIP_ACCOUNT != 0 AND AE.WIP_ACCOUNT IS NOT NULL)
-        order by accrual_id, dept_group)
-        , debit_credit_DIST as(
-         select
-         df.accrual_id,
-         df.distribution_percentage,
-         df.debit_final debit,
-         0::numeric credit,
-         df.dept_group,
-             df.dept,
-             df.analytic_account_id,
-              df.debit_to ACCOUNT_ID,
-             df.wip_account,
-             df.journal_id
-         from
-         distributed_final df
-         union all
-         select
-         je.id accrual_id,
-         0::numeric distribution_percentage,
-         0::numeric debit,
-         je.total_accrual_value credit,
-         '' dept_group,
-        '' dept,
-             null::integer analytic_account_id,
-              JE.credit_to account_id,
-              null::integer wip_account,
-              mact.journal_id
-         from
-         m_acc_accrual je
-         join m_acc_category_tbl mact on mact.id = je.dist_categ_id
-         WHERE JE.month_id = $month_id AND $accrual_where JE.IS_ACCRUAL
-         )
-         select 
-         je.id accrual_id,
-         --je.journal_entry,
-         --je.ref reference,
-         aj.name journal,
-          dcem.journal_id,
-         -- je.account_code,
-         -- je.account_id,
-         AA.CODE ACCOUNT_CODE,
-         DCEM.account_id,
-        -- 	je.item_label,
-        '$to_date_slash' DATE,
-         dcem.dept,
-         dcem.distribution_percentage,
-         dcem.debit,
-         dcem.credit,
-         dcem.analytic_account_id,
-         split_part(dcem.dept,' ', 1) AA_CODE,
-         case when split_part(dcem.dept,' ', 1) = '8120' then 'DIE SALES' 
-                     when split_part(dcem.dept,' ', 1) = '8300' then 'TOs' 
-                     when split_part(dcem.dept,' ', 1) = '8310' then 'SOT' 
-                     when split_part(dcem.dept,' ', 1) = '8100' then 'HERMETICS'
-                     when split_part(dcem.dept,' ', 1) = '8110' then 'MODULES'
-                 end sbu,
-         REPLACE(dcem.dept, '''', '''''') ANALYTIC_ACCOUNT,
-         DCEM.DEPT_GROUP,
-         dcem.wip_account wip_account_id
-         from
-         debit_credit_DIST dcem
-         join m_acC_accrual je on je.id = dcem.accrual_id AND $accrual_where JE.IS_ACCRUAL
-         LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID =DCEM.ACCOUNT_ID
-         left join account_journal aj on aj.id = dcem.journal_id
-         ORDER BY accrual_id";
     }
 
-    $result = $db->fetchAll($q);
+    $result = $db_ken->fetchAll($q);
 }
 
 
@@ -862,21 +595,21 @@ acd.to_date,acd.sbu_names,cda.cogs_account_id
 
 
 if ($result) {
-    if ($is_accrual == 'true') {
-        $db->query("UPDATE M_ACC_MONTH SET is_dept_distributed = TRUE WHERE ID = $month_id");
-    } else {
-        $db->query("UPDATE M_ACC_MONTH SET is_ap_distributed = TRUE WHERE ID = $month_id");
-    }
-    $old_accrual_id = '';
+    // if ($is_accrual == 'true') {
+    //     $db->query("UPDATE M_ACC_MONTH SET is_dept_distributed = TRUE WHERE ID = $month_id");
+    // } else {
+    //     $db->query("UPDATE M_ACC_MONTH SET is_ap_distributed = TRUE WHERE ID = $month_id");
+    // }
+    $old_transaction_id = '';
     try {
         // START TRANSACTION
         $db_ken->beginTransaction();
 
-        $old_accrual_id = 0;
+        $old_transaction_id = 0;
 
         foreach ($result as $item) {
 
-            $accrual_id = $item['accrual_id'];
+            $transaction_id = $item['transaction_id'];
             $account_code = $item['account_code'];
             $account_id = $item['account_id'];
             $analytic_account = $item['analytic_account'];
@@ -886,70 +619,46 @@ if ($result) {
             $credit = $item['credit'] ?: null;
             $account_move_date = $item['date'];
             $sbu = $item['sbu'];
-            $wip_account_id = isset($item['wip_account_id']) && $item['wip_account_id'] ? $item['wip_account_id'] : null;
+            $cogs_account_id = isset($item['cogs_account_id']) && $item['cogs_account_id'] ? $item['cogs_account_id'] : null;
             $journal = $item['journal'];
             $journal_id = $item['journal_id'] ?: null;
             $date = $item['date'];
 
-            // IF accrual_id changed → process update and WIP
-            if ($accrual_id != $old_accrual_id) {
-
-                if ($old_accrual_id != 0) {
-                    // UPDATE old accrual
-                    if ($is_accrual == 'true') {
-                        $db_ken->query(
-                            "UPDATE M_ACC_ACCRUAL SET JOURNAL_ID=$1, JOURNAL_NAME=$2, DATE=$3 WHERE ID=$4",
-                            [$journal_id, $journal, $date, $accrual_id]
-                        );
-                    } else {
-                        $db_ken->query(
-                            "UPDATE M_ACC_ACCRUAL SET DATE=$1 WHERE ID=$2",
-                            [$date, $accrual_id]
-                        );
-                    }
+            // IF accrual_id changed → process update and COGS
+            if ($transaction_id != $old_transaction_id) {
 
 
-                    // INSERT TO WIP
-                    $qToWip = insertToWip($old_accrual_id, $month_id, $accrual_where);
-                    $resultToWip = $db_ken->fetchAll($qToWip);
+                if ($old_transaction_id != 0) {
 
-                    foreach ($resultToWip as $itemToWip) {
-                        $db_ken->insert('M_ACC_TO_WIP', [
-                            'MAIN_ID' => $old_accrual_id,
-                            'ACCOUNT_CODE' => $itemToWip['account_code'],
-                            'ACCOUNT_ID' => $itemToWip['account_id'],
-                            'CREDIT_ACCOUNT_ID' => $itemToWip['credit_account_id'],
-                            'ANALYTIC_ACCOUNT' => $itemToWip['analytic_account'],
-                            'ANALYTIC_ACCOUNT_ID' => $itemToWip['analytic_account_id'] ?: null,
-                            'MOS' => $itemToWip['mos'],
-                            'DEBIT' => $itemToWip['debit'] ?: null,
-                            'CREDIT' => $itemToWip['credit'] ?: null,
-                            'ITEM_LABEL' => $itemToWip['item_label'],
+
+                    // INSERT TO COGS
+                    $qToCogs = insertToCogs($old_transaction_id);
+                    $resultToCogs = $db_ken->fetchAll($qToCogs);
+
+                    foreach ($resultToCogs as $itemToCogs) {
+                        $db_ken->insert('M_ACC_TRX_COGS', [
+                            'MAIN_ID' => $old_transaction_id,
+                            'ACCOUNT_CODE' => $itemToCogs['account_code'],
+                            'ACCOUNT_ID' => $itemToCogs['account_id'],
+                            'CREDIT_ACCOUNT_ID' => $itemToCogs['credit_account_id'],
+                            'ANALYTIC_ACCOUNT' => $itemToCogs['analytic_account'],
+                            'ANALYTIC_ACCOUNT_ID' => $itemToCogs['analytic_account_id'] ?: null,
+                            'MOS' => $itemToCogs['mos'],
+                            'DEBIT' => $itemToCogs['debit'] ?: null,
+                            'CREDIT' => $itemToCogs['credit'] ?: null,
+                            'ITEM_LABEL' => $itemToCogs['item_label'],
                             // 'RAW_DEBIT' => $itemToWip['raw_debit'] ?: null,
                             // 'RAW_CREDIT' => $itemToWip['raw_credit'] ?: null,
                             'ADDED_BY' => $user,
-                            'SBU' => $itemToWip['sbu']
+                            'SBU' => $itemToCogs['sbu']
                         ]);
-                    }
-                } else {
-                    // first time update
-                    if ($is_accrual == 'true') {
-                        $db_ken->query(
-                            "UPDATE M_ACC_ACCRUAL SET JOURNAL_ID=$1, JOURNAL_NAME=$2, DATE=$3 WHERE ID=$4",
-                            [$journal_id, $journal, $date, $accrual_id]
-                        );
-                    } else {
-                        $db_ken->query(
-                            "UPDATE M_ACC_ACCRUAL SET DATE=$1 WHERE ID=$2",
-                            [$date, $accrual_id]
-                        );
                     }
                 }
             }
 
             // INSERT ACCOUNT DISTRIBUTION LINE
-            $db_ken->insert('M_ACC_ACCRUAL_DIST', [
-                'ACCRUAL_ID' => $accrual_id,
+            $db_ken->insert('M_ACC_DISTRIBUTION_TRANSACTION', [
+                'TRANSACTION_ID' => $transaction_id,
                 'ACCOUNT_CODE' => $account_code,
                 'ACCOUNT_ID' => $account_id,
                 'ANALYTIC_ACCOUNT' => $analytic_account,
@@ -959,35 +668,39 @@ if ($result) {
                 'CREDIT' => $credit,
                 'ADDED_BY' => $user,
                 'SBU' => $sbu,
-                'WIP_ACCOUNT_ID' => $wip_account_id
+                'COGS_ACCOUNT_ID' => $cogs_account_id,
+                'TRANSACTION_TYPE' => $transaction_type
             ]);
 
-            $old_accrual_id = $accrual_id;
+            $old_transaction_id = $transaction_id;
+            // $db_ken->commit();
+            // exit;
         }
+        // $db_ken->commit();
+        // exit;
 
 
 
+        // INSERT TO COGS
+        $qToCogsLastRecord = insertToCogs($transaction_id);
+        $resultLastToCogs = $db_ken->fetchAll($qToCogsLastRecord);
 
-        // INSERT TO WIP
-        $qToWipLastRecord = insertToWip($accrual_id, $month_id, $accrual_where);
-        $resultLastToWip = $db_ken->fetchAll($qToWipLastRecord);
-
-        foreach ($resultLastToWip as $itemToWip) {
-            $db_ken->insert('M_ACC_TO_WIP', [
-                'MAIN_ID' => $accrual_id,
-                'ACCOUNT_CODE' => $itemToWip['account_code'],
-                'ACCOUNT_ID' => $itemToWip['account_id'],
-                'CREDIT_ACCOUNT_ID' => $itemToWip['credit_account_id'],
-                'ANALYTIC_ACCOUNT' => $itemToWip['analytic_account'],
-                'ANALYTIC_ACCOUNT_ID' => $itemToWip['analytic_account_id'] ?: null,
-                'MOS' => $itemToWip['mos'],
-                'DEBIT' => $itemToWip['debit'] ?: null,
-                'CREDIT' => $itemToWip['credit'] ?: null,
-                'ITEM_LABEL' => $itemToWip['item_label'],
+        foreach ($resultLastToCogs as $itemToCogs) {
+            $db_ken->insert('M_ACC_TRX_COGS', [
+                'TRANSACTION_ID' => $transaction_id,
+                'ACCOUNT_CODE' => $itemToCogs['account_code'],
+                'ACCOUNT_ID' => $itemToCogs['account_id'],
+                'CREDIT_ACCOUNT_ID' => $itemToCogs['credit_account_id'],
+                'ANALYTIC_ACCOUNT' => $itemToCogs['analytic_account'],
+                'ANALYTIC_ACCOUNT_ID' => $itemToCogs['analytic_account_id'] ?: null,
+                'MOS' => $itemToCogs['mos'],
+                'DEBIT' => $itemToCogs['debit'] ?: null,
+                'CREDIT' => $itemToCogs['credit'] ?: null,
+                'ITEM_LABEL' => $itemToCogs['item_label'],
                 // 'RAW_DEBIT' => $itemToWip['raw_debit'] ?: null,
                 // 'RAW_CREDIT' => $itemToWip['raw_credit'] ?: null,
                 'ADDED_BY' => $user,
-                'SBU' => $itemToWip['sbu']
+                'SBU' => $itemToCogs['sbu']
             ]);
         }
 
@@ -1010,20 +723,20 @@ if ($result) {
     exit;
 }
 
-function insertToWip($previous_main_id, $month_id, $accrual_where)
+function insertToCogs($previous_main_id)
 {
 
-    $qToWip = "
+    $qToCogs = "
     with not_tally as(
         select
-        maa.id accrual_id,
+        maa.id transaction_id,
     adm.mo,
     adm.device,
     adm.category,
     adm.customer_name,
     adm.earned_hrs,
     aad.debit *
-    CASE WHEN MACT.mo_pct_ref = 'EH' THEN adm.EH_percentage
+    CASE WHEN maa.mo_dist = 'EH' THEN adm.EH_percentage
     ELSE QTY_PERCENTAGE END allocation,
     aad.sbu,
         adm.is_invoiced,
@@ -1031,26 +744,29 @@ function insertToWip($previous_main_id, $month_id, $accrual_where)
         aad.ACCOUNT_ID,
       aad.ANALYTIC_ACCOUNT,
         aad.ANALYTIC_ACCOUNT_ID,
-        aad.wip_account_id,
+        aad.cogs_account_id,
         adm.invoiced_qty,
         adm.mo_done_qty
-    from 
-    m_acc_month adr
-        join M_ACC_ACCRUAL maa on maa.month_id = adr.ID AND $accrual_where MAA.IS_ACCRUAL
-        join M_ACC_ACCRUAL_DIST aad on aad.accrual_id = maa.id
+    from
+--         join M_ACC_ACCRUAL maa on maa.month_id = adr.ID AND accrual_where MAA.IS_ACCRUAL
+--         join M_ACC_ACCRUAL_DIST aad on aad.transaction_id = maa.id
+-- 	select * from m_acc_distribution_transaction
+-- 	select * from m_acc_cust_dist
+	 m_acc_cust_dist maa 
+	join m_acc_distribution_transaction aad on aad.transaction_id = maa.id and aad.transaction_type ='custom_distribution'
     join account_analytic_account aaa on aaa.id =aad.analytic_account_id
     join m_acc_depARTMENT_groups adg on adg.id = aaa.m_acc_group_id
     join m_acc_mo_wip adm on adm.sbu =aad.sbu and adm.from_date = maa.from_date and adm.to_date = maa.to_date
     JOIN ACCOUNT_ACCOUNT   AA ON AA.ID = aad.ACCOUNT_ID
-    JOIN M_ACC_CATEGORY_ACCOUNTS ACA ON ACA.ACCOUNT_ID = AA.ID and aca.acc_category_id = maa.dist_categ_id
-    JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.acc_category_id
-    where adr.id =$month_id and aad.wip_account_id is not null and
+--     JOIN M_ACC_CATEGORY_ACCOUNTS ACA ON ACA.ACCOUNT_ID = AA.ID and aca.acc_category_id = maa.dist_categ_id
+--     JOIN M_ACC_CATEGORY_TBL MACT ON MACT.ID =ACA.acc_category_id
+    where  aad.cogs_account_id is not null and
     adm.is_invoiced and
     maa.id in ($previous_main_id) and adg.dept_group ='MANUFACTURING/PRODUCT LINE'
     )
     ,MO_RANKED AS (
     SELECT 
-    nt.accrual_id,
+    nt.transaction_id,
     NT.MO,
     NT.DEVICE,
     NT.CATEGORY,
@@ -1058,22 +774,22 @@ function insertToWip($previous_main_id, $month_id, $accrual_where)
     NT.CUSTOMER_NAME,
     NT.earned_hrs,
     TRUNC(NT.ALLOCATION,5) TRUNC_ALLOCATION,
-    SUM(NT.ALLOCATION) OVER(partition by nt.accrual_id) TOTAL_ALLOCATION,
-    SUM(TRUNC(NT.ALLOCATION,5)) OVER(partition by nt.accrual_id) TOTAL_TRUNC_ALLOCATION,
+    SUM(NT.ALLOCATION) OVER(partition by nt.transaction_id) TOTAL_ALLOCATION,
+    SUM(TRUNC(NT.ALLOCATION,5)) OVER(partition by nt.transaction_id) TOTAL_TRUNC_ALLOCATION,
     (
     NT.ALLOCATION- TRUNC(NT.ALLOCATION,5)
     ) ALLOCATION_DIFF,
     ((
-    SUM(NT.ALLOCATION) OVER(partition by nt.accrual_id)- SUM(TRUNC(NT.ALLOCATION,5)) OVER(partition by nt.accrual_id)
+    SUM(NT.ALLOCATION) OVER(partition by nt.transaction_id)- SUM(TRUNC(NT.ALLOCATION,5)) OVER(partition by nt.transaction_id)
     )/ 0.00001)::INTEGER ROWS_TO_ADJUST,
-    ROW_NUMBER() OVER (partition by nt.accrual_id ORDER BY NT.ALLOCATION - TRUNC(NT.ALLOCATION,5) DESC) AS rn,
+    ROW_NUMBER() OVER (partition by nt.transaction_id ORDER BY NT.ALLOCATION - TRUNC(NT.ALLOCATION,5) DESC) AS rn,
     nt.sbu,
     nt.is_invoiced,
     nt.ACCOUNT_CODE,
         nt.ACCOUNT_ID,
         nt.ANALYTIC_ACCOUNT,
         nt.ANALYTIC_ACCOUNT_ID,
-        nt.wip_account_id,
+        nt.cogs_account_id,
         nt.invoiced_qty,
         nt.mo_done_qty
     FROM 
@@ -1081,7 +797,7 @@ function insertToWip($previous_main_id, $month_id, $accrual_where)
     )
     , allocation_adjusted as (
     SELECT 
-                        accrual_id,
+                        transaction_id,
     MO,
     DEVICE,
     CATEGORY,
@@ -1105,7 +821,7 @@ function insertToWip($previous_main_id, $month_id, $accrual_where)
         ACCOUNT_ID,
         ANALYTIC_ACCOUNT,
         ANALYTIC_ACCOUNT_ID,
-        WIP_aCCOUNT_ID,
+        cogs_account_id,
         invoiced_qty,
 		mo_done_qty
     FROM
@@ -1113,7 +829,7 @@ function insertToWip($previous_main_id, $month_id, $accrual_where)
                              )
 							 ,FINAL_DATA AS (
 							  select 
-    accrual_id,
+    transaction_id,
     string_Agg(DISTINCT mo,',') mos,
     round(sum(allocation),2) allocation,
     is_invoiced,
@@ -1122,46 +838,46 @@ function insertToWip($previous_main_id, $month_id, $accrual_where)
     ACCOUNT_ID CREDIT_ACCOUNT_ID,
         ANALYTIC_ACCOUNT,
         ANALYTIC_ACCOUNT_ID,
-        AADD.WIP_ACCOUNT_ID ACCOUNT_ID,
+        AADD.cogs_account_id ACCOUNT_ID,
         AA.CODE ACCOUNT_CODE,
 		'' reference
     from
     allocation_adjusted aadd
-    LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID = AADD.WIP_ACCOUNT_ID
+    LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID = AADD.cogs_account_id
     where --not is_invoiced
      is_invoiced
-    group by accrual_id,sbu,is_invoiced, total_allocation,
+    group by transaction_id,sbu,is_invoiced, total_allocation,
         ANALYTIC_ACCOUNT,
         ANALYTIC_ACCOUNT_ID,
           ACCOUNT_CODE,
         ACCOUNT_ID,
-        AADD.WIP_ACCOUNT_ID,
+        AADD.cogs_account_id,
         AA.CODE,
-        AADD.WIP_ACCOUNT_ID
-    union all							 
-    select  
-     	im.accrual_id accrual_id,
-     	string_Agg(DISTINCT am.mo,',') mos,
-         round(sum( (im.invoiced_qty/im.mo_done_qty) * coalesce(aml.actual_allocation,aml.accrual_allocation)),2) allocation, 
- 		true is_invoiced,
-     	am.sbu, 
-     	IM.ACCOUNT_CODE CREDIT_ACCOUNT_CODE,
-     	IM.ACCOUNT_ID CREDIT_ACCOUNT_ID,
-         IM.ANALYTIC_ACCOUNT,
-         IM.ANALYTIC_ACCOUNT_ID,
-         IM.WIP_ACCOUNT_ID ACCOUNT_ID,
-         AA.CODE ACCOUNT_CODE,
- 		'From WIP of Previous Months' reference
-     	from m_acc_mo_wip am
-     	left join m_acc_mo_wip_line aml on aml.mo_wip_id = am.id
-     	join m_acc_accrual maa on maa.id = aml.accrual_id -- AND $accrual_where MAA.IS_ACCRUAL
-     	join M_ACC_ACCRUAL_DIST mad on mad.accrual_id = aml.accrual_id and upper(mad.sbu) = upper(am.sbu)
-     	join M_ACC_CATEGORY_TBL mact on mact.id = maa.dist_categ_id
-     	JOIN allocation_adjusted IM ON IM.MO =AM.MO AND IM.WIP_ACCOUNT_ID = MAD.wip_account_id
- 		LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID = IM.WIP_ACCOUNT_ID
-     	WHERE am.month_id != $month_id and not am.is_invoiced
-     	and coalesce(aml.actual_allocation,aml.accrual_allocation) is not null
-     	group by im.accrual_id, am.sbu,IM.ACCOUNT_CODE,IM.ACCOUNT_ID,IM.ANALYTIC_ACCOUNT,IM.ANALYTIC_ACCOUNT_ID,IM.WIP_ACCOUNT_ID,aa.CODE
+        AADD.cogs_account_id
+--     union all							 
+--     select  
+--      	im.accrual_id accrual_id,
+--      	string_Agg(DISTINCT am.mo,',') mos,
+--          round(sum( (im.invoiced_qty/im.mo_done_qty) * coalesce(aml.actual_allocation,aml.accrual_allocation)),2) allocation, 
+--  		true is_invoiced,
+--      	am.sbu, 
+--      	IM.ACCOUNT_CODE CREDIT_ACCOUNT_CODE,
+--      	IM.ACCOUNT_ID CREDIT_ACCOUNT_ID,
+--          IM.ANALYTIC_ACCOUNT,
+--          IM.ANALYTIC_ACCOUNT_ID,
+--          IM.cogs_account_id ACCOUNT_ID,
+--          AA.CODE ACCOUNT_CODE,
+--  		'From WIP of Previous Months' reference
+--      	from m_acc_mo_wip am
+--      	left join m_acc_mo_wip_line aml on aml.mo_wip_id = am.id
+--      	join m_acc_accrual maa on maa.id = aml.accrual_id -- AND accrual_where MAA.IS_ACCRUAL
+--      	join M_ACC_ACCRUAL_DIST mad on mad.accrual_id = aml.accrual_id and upper(mad.sbu) = upper(am.sbu)
+--      	join M_ACC_CATEGORY_TBL mact on mact.id = maa.dist_categ_id
+--      	JOIN allocation_adjusted IM ON IM.MO =AM.MO AND IM.cogs_account_id = MAD.cogs_account_id
+--  		LEFT JOIN ACCOUNT_ACCOUNT AA ON AA.ID = IM.cogs_account_id
+--      	WHERE am.month_id != month_id and not am.is_invoiced
+--      	and coalesce(aml.actual_allocation,aml.accrual_allocation) is not null
+--      	group by im.accrual_id, am.sbu,IM.ACCOUNT_CODE,IM.ACCOUNT_ID,IM.ANALYTIC_ACCOUNT,IM.ANALYTIC_ACCOUNT_ID,IM.cogs_account_id,aa.CODE
 		)
 	SELECT 
     FD.ACCOUNT_CODE,
@@ -1192,7 +908,7 @@ function insertToWip($previous_main_id, $month_id, $accrual_where)
     FD2.CREDIT_ACCOUNT_CODE,
     FD2.CREDIT_ACCOUNT_ID
     ";
-    return $qToWip;
+    return $qToCogs;
 }
 // var_dump($result);
 // exit;

@@ -55,7 +55,8 @@ $isSetupActive = in_array($basename_server, $setup_pages);
 
 $dist_pages = [
     'ap_distribution.php',
-    'custom_distribution.php'
+    'custom_distribution.php',
+    'prepaid_expense.php'
 ];
 
 $isDistActive = in_array($basename_server, $dist_pages);
@@ -254,6 +255,12 @@ $activeCount = count($activeUsers); // END
                             <span>A/P Distribution</span>
                         </a>
                     </li>
+                    <li class="<?php echo ($basename_server == 'prepaid_expense.php' ? 'active' : ''); ?>">
+                        <a href="prepaid_expense.php" class="waves-effect waves-block">
+
+                            <span>Prepaid Expense Distribution</span>
+                        </a>
+                    </li>
                     <li class="<?php echo ($basename_server == 'custom_distribution.php' ? 'active' : ''); ?>">
                         <a href="custom_distribution.php" class="waves-effect waves-block">
 
@@ -272,8 +279,8 @@ $activeCount = count($activeUsers); // END
                     </a>
                     <ul class="ml-menu">
                         <?php if ($hasAdminAccess) { ?>
-                            <li class="<?php echo ($basename_server == 'accrual_customized.php' ? 'active' : ''); ?>">
-                                <a href="accrual_customized.php" class="waves-effect waves-block">
+                            <li class="<?php echo ($basename_server == 'accrual.php' ? 'active' : ''); ?>">
+                                <a href="accrual.php" class="waves-effect waves-block">
 
                                     <span>Active Accruals</span>
                                 </a>
@@ -320,11 +327,11 @@ $activeCount = count($activeUsers); // END
                                     <span>Department Group</span>
                                 </a>
                             </li> -->
-                            <li class="<?php echo ($basename_server == 'category_acc_maintenance.php' ? 'active' : ''); ?>">
+                            <!-- <li class="<?php echo ($basename_server == 'category_acc_maintenance.php' ? 'active' : ''); ?>">
                                 <a href="category_acc_maintenance.php" class="waves-effect waves-block">
                                     <span>Template Maintenance</span>
                                 </a>
-                            </li>
+                            </li> -->
                             <?php if ($userDept === "Management Information System") { ?>
                                 <li class="<?php echo ($basename_server == 'account_tagging.php' ? 'active' : ''); ?>">
                                     <a href="account_tagging.php" class="waves-effect waves-block">
@@ -334,7 +341,7 @@ $activeCount = count($activeUsers); // END
                             <?php } ?>
                             <li class="<?php echo ($basename_server == 'distribution_cost_maintenance.php' ? 'active' : ''); ?>">
                                 <a href="distribution_cost_maintenance.php" class="waves-effect waves-block">
-                                    <span>Distribution Percentage</span>
+                                    <span>Distribution Template</span>
                                 </a>
                             </li>
                             <!-- <li class="<?php echo ($basename_server == 'date_range_maintenance.php' ? 'active' : ''); ?>">
@@ -540,7 +547,7 @@ $activeCount = count($activeUsers); // END
         if ($('body').hasClass('sidebar-hidden')) {
             localStorage.setItem('sidebarHidden', '1');
         } else {
-            localStorage.setItem('sidebarHidden', '0');
+            localStorage.setItem('sidebarHidden', '0'); 
         }
     });
 

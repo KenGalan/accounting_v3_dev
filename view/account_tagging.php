@@ -39,16 +39,16 @@
 
 <div class="mb-3">
     <button type="button" id="toggleInputBtn" class="btn btn-primary" style="margin-bottom: 15px;">
-        Add Referece
+        Add Account
     </button>
 </div>
 
 <div id="accountInputContainer" style="display:none; margin-bottom:15px;">
     <div class="row">
         <div class="col-md-4">
-            <!-- <select id="accountSelect" class="form-control" multiple style="width:100%;">
-            </select> -->
-            <input type="text" id="referenceInput" placeholder="Enter Reference" class="form-control">
+            <select id="accountSelect" class="form-control" multiple style="width:100%;">
+            </select>
+            <!-- <input type="text" id="referenceInput" placeholder="Enter Reference" class="form-control"> -->
         </div>
         <div class="col-md-2">
             <button type="button" id="addAccountRowBtn" class="btn btn-success">
@@ -64,6 +64,7 @@
             <th>Reference</th>
             <th>Date Added</th>
             <th>Added By</th>
+            <th>Cogs Account</th>
             <!-- <th>Changed By</th>
             <th>Changed On</th> -->
             <th>Action</th>
@@ -74,14 +75,19 @@
 
 <script>
     $(document).ready(function() {
-
         let accountTable = $('#accountTable').DataTable({
+                // drawCallback: function() {
+                //     $('.wipAccount').select2({
+                //         width: 'resolve',
+                //         placeholder: 'Select WIP'
+                //     });
+                // },
             ajax: {
                 url: 'ajax/fetch/fetch_customized_acc.php',
                 dataSrc: 'data'
             },
             columns: [{
-                    data: 'reference'
+                    data: 'account_name'
                 },
                 {
                     data: 'date_added'
@@ -96,47 +102,145 @@
                 //     data: 'changed_on'
                 // },
                 {
+                    data: null,
+                    render: function(data, type, row) {
+
+                        let selectedId = row.cogs_account_id || '';
+                        let selectedText = row.account_name_cogs || '';
+
+                        let html = '';
+
+                        html += `<select class="cogsAccount form-control" disabled style="width:100%;">`;
+
+                        if (selectedId) {
+                            html += `<option value="${selectedId}" selected>${selectedText}</option>`;
+                        } else {
+                            html += `<option value="">Select COGS</option>`;
+                        }
+
+                        html += `</select>`;
+
+                        return html;
+                    }
+                },
+                {
                     data: 'id',
                     render: function(data) {
-                        return `<button type="button" class="btn btn-sm btn-danger deleteRowBtn" data-id="${data}">Delete</button>`;
+                        return `<button type="button" class="btn btn-sm btn-danger deleteRowBtn" data-id="${data}">Delete</button>
+                        <button type="button" class="btn btn-sm btn-primary editBtn" data-id="${data}">Edit</button>`;
                     }
                 }
             ]
         });
 
+
+        $('#accountTable').on('draw.dt', function () {
+
+            $('.cogsAccount').select2({
+                placeholder: "Select COGS Account",
+                allowClear: true,
+                width: '100%',
+                ajax: {
+                    url: 'ajax/fetch/fetch_cogs_accounts.php',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            search: params.term || ''
+                        };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data
+                        };
+                    },
+                    cache: true
+                }
+            });
+
+        });
+
+
         $('#toggleInputBtn').on('click', function() {
             $('#accountInputContainer').slideToggle();
         });
 
-        // $('#accountSelect').select2({
-        //     placeholder: "Select Account(s)",
-        //     allowClear: true,
-        //     width: '100%',
-        //     ajax: {
-        //         url: 'ajax/fetch/fetch_account_account.php',
-        //         dataType: 'json',
-        //         delay: 250,
-        //         data: function(params) {
-        //             return {
-        //                 search: params.term || ''
-        //             };
-        //         },
-        //         processResults: function(data) {
-        //             return {
-        //                 results: data
-        //             };
-        //         },
-        //         cache: true
-        //     }
-        // });
+         $('#accountSelect').select2({
+             placeholder: "Select Account(s)",
+             allowClear: true,
+            width: '100%',
+             ajax: {
+                 url: 'ajax/fetch/fetch_account_account.php',
+                 dataType: 'json',
+                 delay: 250,
+                 data: function(params) {
+                     return {
+                        search: params.term || ''
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data
+                    };
+                 },
+                 cache: true
+             }
+         });
 
+        $(document).on('click', '.editBtn', function () {
+
+            let btn = $(this);
+            let row = btn.closest('tr');
+
+            row.find('.cogsAccount').prop('disabled', false);
+
+            btn
+                .removeClass('btn-primary editBtn')
+                .addClass('btn-success saveBtn')
+                .text('Save');
+
+        });
+
+            $(document).on('click', '.saveBtn', function () {
+
+                let btn = $(this);
+                let row = btn.closest('tr');
+
+                let id = btn.data('id');
+                let cogsAccountId = row.find('.cogsAccount').val();
+
+                $.ajax({
+                    url: 'ajax/transaction/update_wip_account.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        id: id,
+                        cogs_account_id: cogsAccountId
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            row.find('.cogsAccount').prop('disabled', true);
+
+                            btn
+                                .removeClass('btn-success saveBtn')
+                                .addClass('btn-primary editBtn')
+                                .text('Edit');
+
+                            swal('Success', 'COGS Account updated successfully.', 'success');
+                        } else {
+                            swal('Warning', res.message || 'Update failed.', 'warning');
+                        }
+                    }
+                });
+
+            });
         $('#addAccountRowBtn').on('click', function() {
-            // let accountIds = $('#accountSelect').val();
-            let reference = $('#referenceInput').val().trim();
+             let accountIds = $('#accountSelect').val();
+            // let reference = $('#referenceInput').val().trim();
             // let selectedData = $('#accountSelect').select2('data');
 
-            if (!reference) {
-                swal('Please enter a reference.');
+            if (!accountIds) {
+                swal('Please enter a account.');
                 return;
             }
 
@@ -145,8 +249,8 @@
                 type: 'POST',
                 dataType: 'json',
                 data: {
-                    // account_ids: accountIds,
-                    reference: reference
+                    account_ids: accountIds
+                    // reference: reference
                 },
                 success: function(response) {
                     if (response.status === 'success') {
@@ -159,7 +263,7 @@
 
                             accountTable.row.add({
                                 id: saved.id,
-                                reference: saved.reference,
+                                accountIds: saved.accountIds,
                                 date_added: saved.date_added,
                                 added_by: saved.added_by,
                                 // changed_by: '',
@@ -167,7 +271,7 @@
                             }).draw(false);
                         // });
 
-                        // $('#accountSelect').val(null).trigger('change');
+                        $('#accountSelect').val(null).trigger('change');
                         $('#accountInputContainer').slideUp();
 
                     } else {

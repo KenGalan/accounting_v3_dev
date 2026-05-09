@@ -12,6 +12,7 @@ if (!isset($_SESSION['ppc']['emp_no'])) : $user = 0;
 endif; //NOT ISSET SESSION
 
 $month_id = isset($_POST['month_id']) ? intval($_POST['month_id']) : 0;
+$transaction_type = isset($_POST['transaction_type']) ? $_POST['transaction_type'] : '';
 
 $year_month = $_POST['year_month'];
 // echo $year_month;
@@ -39,6 +40,7 @@ try {
                 'DIST_CATEG_ID' => intval($row['dist_template']),
                 'FROM_DATE' => $row['from_date'],
                 'TO_DATE' => $row['to_date'],
+                'TRANSACTION_TYPE' => $transaction_type,
                 'ADDED_BY' => intval($user),
                 'IS_ACCRUAL' => true
             ];

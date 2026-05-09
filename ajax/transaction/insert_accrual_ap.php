@@ -12,6 +12,7 @@ if (!isset($_SESSION['ppc']['emp_no'])) : $user = 0;
 endif; //NOT ISSET SESSION
 
 $month_id = isset($_POST['month_id']) ? intval($_POST['month_id']) : 0;
+$transaction_type = isset($_POST['transaction_type']) ? $_POST['transaction_type'] : '';
 
 $year_month = $_POST['year_month'];
 // echo $year_month;
@@ -41,9 +42,10 @@ try {
                 'JOURNAL_NAME' => $row['journal_acc'],
                 'FROM_DATE' => $row['from_date'],
                 'TO_DATE' => $row['to_date'],
+                'TRANSACTION_TYPE' => $transaction_type,
                 'ADDED_BY' => intval($user)
             ];
-        } else {
+        } else { 
             $insertData = [
                 'MONTH_ID' => $month_id,
                 'CREDIT_TO' => $row['credit_account'],
